@@ -68,12 +68,10 @@ let userConsent = {
 
 /* ---------------------- Hash user data ---------------------- */
 const hashesReady = (async () => {
-  userData.firstNameHash = userData.firstName
-    ? await sha256(userData.firstName)
-    : null;
-  userData.lastNameHash = userData.lastName
-    ? await sha256(userData.lastName)
-    : null;
+  userData.firstNameHash =
+    userData.firstName ? await sha256(userData.firstName) : null;
+  userData.lastNameHash =
+    userData.lastName ? await sha256(userData.lastName) : null;
   userData.emailHash = userData.email ? await sha256(userData.email) : null;
   userData.phoneHash = userData.phone ? await sha256(userData.phone) : null;
 })();
@@ -170,30 +168,28 @@ analytics?.subscribe?.("page_viewed", async (event) => {
     environment: environment,
     user_id: userData.userId,
     user_orders_count: userData.userOrdersCount,
-    user_first_name_hash: config.pushHashedUserData.includes("firstName")
-      ? userData.firstNameHash
+    user_first_name_hash:
+      config.pushHashedUserData.includes("firstName") ?
+        userData.firstNameHash
       : null,
-    user_last_name_hash: config.pushHashedUserData.includes("lastName")
-      ? userData.lastNameHash
+    user_last_name_hash:
+      config.pushHashedUserData.includes("lastName") ?
+        userData.lastNameHash
       : null,
-    user_email_hash: config.pushHashedUserData.includes("email")
-      ? userData.emailHash
+    user_email_hash:
+      config.pushHashedUserData.includes("email") ? userData.emailHash : null,
+    user_phone_hash:
+      config.pushHashedUserData.includes("phone") ? userData.phoneHash : null,
+    __user_first_name:
+      config.pushHashedUserData.includes("firstName") ?
+        userData.firstName
       : null,
-    user_phone_hash: config.pushHashedUserData.includes("phone")
-      ? userData.phoneHash
-      : null,
-    __user_first_name: config.pushHashedUserData.includes("firstName")
-      ? userData.firstName
-      : null,
-    __user_last_name: config.pushHashedUserData.includes("lastName")
-      ? userData.lastName
-      : null,
-    __user_email: config.pushClearUserData.includes("email")
-      ? userData.email
-      : null,
-    __user_phone: config.pushClearUserData.includes("phone")
-      ? userData.phone
-      : null,
+    __user_last_name:
+      config.pushHashedUserData.includes("lastName") ? userData.lastName : null,
+    __user_email:
+      config.pushClearUserData.includes("email") ? userData.email : null,
+    __user_phone:
+      config.pushClearUserData.includes("phone") ? userData.phone : null,
   };
 
   if (validateEvent("page_view", { event: ga4EventName, ...pageViewObject })) {
@@ -215,8 +211,9 @@ analytics?.subscribe?.("collection_viewed", (event) => {
   const ga4EcommerceObject = {
     item_list_id: collection?.id,
     item_list_name: collection?.title,
-    items: collection.productVariants
-      ? collection.productVariants.map((variant, index) => ({
+    items:
+      collection.productVariants ?
+        collection.productVariants.map((variant, index) => ({
           item_id: variant?.sku || variant?.id || variant?.product?.id || "",
           item_name: variant?.product?.title || "",
           affiliation: "",
@@ -397,8 +394,9 @@ analytics?.subscribe?.("cart_viewed", (event) => {
   const ga4EcommerceObject = {
     currency: cart?.cost?.totalAmount?.currencyCode,
     value: Number(cart?.cost?.totalAmount?.amount || 0),
-    items: cart.lines
-      ? cart.lines.map((line, index) => ({
+    items:
+      cart.lines ?
+        cart.lines.map((line, index) => ({
           item_id:
             line.merchandise?.sku ||
             line.merchandise?.id ||
@@ -446,8 +444,9 @@ analytics?.subscribe?.("checkout_started", (event) => {
     currency: checkout?.totalPrice?.currencyCode || checkout?.currencyCode,
     value: Number(checkout?.totalPrice?.amount || 0),
     coupon: checkout?.discountApplications?.[0]?.title || "",
-    items: checkout?.lineItems
-      ? checkout.lineItems.map((line, index) => ({
+    items:
+      checkout?.lineItems ?
+        checkout.lineItems.map((line, index) => ({
           item_id:
             line.variant?.sku ||
             line.variant?.id ||
@@ -497,8 +496,9 @@ analytics?.subscribe?.("checkout_address_info_submitted", async (event) => {
     value: Number(checkout?.totalPrice?.amount || 0),
     coupon: checkout?.discountApplications?.[0]?.title || "",
     shipping_tier: checkout?.delivery?.selectedDeliveryOptions?.[0]?.type,
-    items: checkout?.lineItems
-      ? checkout.lineItems.map((line, index) => ({
+    items:
+      checkout?.lineItems ?
+        checkout.lineItems.map((line, index) => ({
           item_id:
             line.variant?.sku ||
             line.variant?.id ||
@@ -531,30 +531,30 @@ analytics?.subscribe?.("checkout_address_info_submitted", async (event) => {
     pushEvent({
       event: ga4EventName,
       ecommerce: ga4EcommerceObject,
-      user_first_name_hash: config.pushHashedUserData.includes("firstName")
-        ? userData.firstNameHash
+      user_first_name_hash:
+        config.pushHashedUserData.includes("firstName") ?
+          userData.firstNameHash
         : null,
-      user_last_name_hash: config.pushHashedUserData.includes("lastName")
-        ? userData.lastNameHash
+      user_last_name_hash:
+        config.pushHashedUserData.includes("lastName") ?
+          userData.lastNameHash
         : null,
-      user_email_hash: config.pushHashedUserData.includes("email")
-        ? userData.emailHash
+      user_email_hash:
+        config.pushHashedUserData.includes("email") ? userData.emailHash : null,
+      user_phone_hash:
+        config.pushHashedUserData.includes("phone") ? userData.phoneHash : null,
+      __user_first_name:
+        config.pushHashedUserData.includes("firstName") ?
+          userData.firstName
         : null,
-      user_phone_hash: config.pushHashedUserData.includes("phone")
-        ? userData.phoneHash
+      __user_last_name:
+        config.pushHashedUserData.includes("lastName") ?
+          userData.lastName
         : null,
-      __user_first_name: config.pushHashedUserData.includes("firstName")
-        ? userData.firstName
-        : null,
-      __user_last_name: config.pushHashedUserData.includes("lastName")
-        ? userData.lastName
-        : null,
-      __user_email: config.pushClearUserData.includes("email")
-        ? userData.email
-        : null,
-      __user_phone: config.pushClearUserData.includes("phone")
-        ? userData.phone
-        : null,
+      __user_email:
+        config.pushClearUserData.includes("email") ? userData.email : null,
+      __user_phone:
+        config.pushClearUserData.includes("phone") ? userData.phone : null,
     });
   }
 });
@@ -576,8 +576,9 @@ analytics?.subscribe?.("payment_info_submitted", async (event) => {
     value: Number(checkout?.totalPrice?.amount || 0),
     coupon: checkout?.discountApplications?.[0]?.title || "",
     payment_type: checkout?.transactions?.[0]?.paymentMethod?.name || "",
-    items: checkout?.lineItems
-      ? checkout.lineItems.map((line, index) => ({
+    items:
+      checkout?.lineItems ?
+        checkout.lineItems.map((line, index) => ({
           item_id:
             line.variant?.sku ||
             line.variant?.id ||
@@ -610,30 +611,30 @@ analytics?.subscribe?.("payment_info_submitted", async (event) => {
     pushEvent({
       event: ga4EventName,
       ecommerce: ga4EcommerceObject,
-      user_first_name_hash: config.pushHashedUserData.includes("firstName")
-        ? userData.firstNameHash
+      user_first_name_hash:
+        config.pushHashedUserData.includes("firstName") ?
+          userData.firstNameHash
         : null,
-      user_last_name_hash: config.pushHashedUserData.includes("lastName")
-        ? userData.lastNameHash
+      user_last_name_hash:
+        config.pushHashedUserData.includes("lastName") ?
+          userData.lastNameHash
         : null,
-      user_email_hash: config.pushHashedUserData.includes("email")
-        ? userData.emailHash
+      user_email_hash:
+        config.pushHashedUserData.includes("email") ? userData.emailHash : null,
+      user_phone_hash:
+        config.pushHashedUserData.includes("phone") ? userData.phoneHash : null,
+      __user_first_name:
+        config.pushHashedUserData.includes("firstName") ?
+          userData.firstName
         : null,
-      user_phone_hash: config.pushHashedUserData.includes("phone")
-        ? userData.phoneHash
+      __user_last_name:
+        config.pushHashedUserData.includes("lastName") ?
+          userData.lastName
         : null,
-      __user_first_name: config.pushHashedUserData.includes("firstName")
-        ? userData.firstName
-        : null,
-      __user_last_name: config.pushHashedUserData.includes("lastName")
-        ? userData.lastName
-        : null,
-      __user_email: config.pushClearUserData.includes("email")
-        ? userData.email
-        : null,
-      __user_phone: config.pushClearUserData.includes("phone")
-        ? userData.phone
-        : null,
+      __user_email:
+        config.pushClearUserData.includes("email") ? userData.email : null,
+      __user_phone:
+        config.pushClearUserData.includes("phone") ? userData.phone : null,
     });
   }
 });
@@ -660,8 +661,9 @@ analytics?.subscribe?.("checkout_completed", async (event) => {
     coupon: checkout?.discountApplications?.[0]?.title || "",
     shipping: Number(checkout?.shippingLine?.price?.amount || 0),
     tax: Number(checkout?.totalTax?.amount || 0),
-    items: checkout?.lineItems
-      ? checkout.lineItems.map((line, index) => ({
+    items:
+      checkout?.lineItems ?
+        checkout.lineItems.map((line, index) => ({
           item_id:
             line.variant?.sku ||
             line.variant?.id ||
@@ -694,30 +696,30 @@ analytics?.subscribe?.("checkout_completed", async (event) => {
     pushEvent({
       event: ga4EventName,
       ecommerce: ga4EcommerceObject,
-      user_first_name_hash: config.pushHashedUserData.includes("firstName")
-        ? userData.firstNameHash
+      user_first_name_hash:
+        config.pushHashedUserData.includes("firstName") ?
+          userData.firstNameHash
         : null,
-      user_last_name_hash: config.pushHashedUserData.includes("lastName")
-        ? userData.lastNameHash
+      user_last_name_hash:
+        config.pushHashedUserData.includes("lastName") ?
+          userData.lastNameHash
         : null,
-      user_email_hash: config.pushHashedUserData.includes("email")
-        ? userData.emailHash
+      user_email_hash:
+        config.pushHashedUserData.includes("email") ? userData.emailHash : null,
+      user_phone_hash:
+        config.pushHashedUserData.includes("phone") ? userData.phoneHash : null,
+      __user_first_name:
+        config.pushHashedUserData.includes("firstName") ?
+          userData.firstName
         : null,
-      user_phone_hash: config.pushHashedUserData.includes("phone")
-        ? userData.phoneHash
+      __user_last_name:
+        config.pushHashedUserData.includes("lastName") ?
+          userData.lastName
         : null,
-      __user_first_name: config.pushHashedUserData.includes("firstName")
-        ? userData.firstName
-        : null,
-      __user_last_name: config.pushHashedUserData.includes("lastName")
-        ? userData.lastName
-        : null,
-      __user_email: config.pushClearUserData.includes("email")
-        ? userData.email
-        : null,
-      __user_phone: config.pushClearUserData.includes("phone")
-        ? userData.phone
-        : null,
+      __user_email:
+        config.pushClearUserData.includes("email") ? userData.email : null,
+      __user_phone:
+        config.pushClearUserData.includes("phone") ? userData.phone : null,
     });
   }
 });
@@ -865,9 +867,8 @@ function validateEvent(eventName, params) {
 /* ---------------------- Utility functions ---------------------- */
 function getEnvironment() {
   const hostname = init?.context?.document?.location?.hostname;
-  const isProdHostname = config.websiteDomain
-    ? [config.websiteDomain].includes(hostname)
-    : true;
+  const isProdHostname =
+    config.websiteDomain ? [config.websiteDomain].includes(hostname) : true;
   const isTestingEnvironment = !!sessionStorage.getItem("webPixelDebug");
   const isProd = isProdHostname && !isTestingEnvironment;
   return isProd ? "production" : "development";
@@ -893,9 +894,9 @@ function shouldInitGTM() {
 
 function initializeGTM() {
   const isProd = getEnvironment() === "production";
-  const gtmSource = config.gtmDevContainerUrl
-    ? isProd
-      ? config.gtmContainerUrl
+  const gtmSource =
+    config.gtmDevContainerUrl ?
+      isProd ? config.gtmContainerUrl
       : config.gtmDevContainerUrl
     : config.gtmContainerUrl;
 
