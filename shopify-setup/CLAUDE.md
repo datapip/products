@@ -50,10 +50,10 @@ dann auf das Produkt-File portieren (mit Entfernung von Client-spezifischem Code
 
 ### Laufzeitumgebung (Shopify Pixel Sandbox)
 Der Code läuft in einem **isolierten Browser-iframe** mit stark eingeschränktem API-Zugriff:
-- Kein `document`, `window`, `localStorage`, `sessionStorage` (außer über `browser.*` APIs)
+- Kein `document`, `window`, `localStorage`
 - Kein direkter DOM-Zugriff
 - Kein `fetch` zu beliebigen Origins (nur explizit erlaubte)
-- Verfügbare APIs: `analytics.subscribe()`, `browser.sessionStorage.*`, `pixel.settings.*`, `init` event für Customer Privacy
+- Verfügbare APIs: `analytics.subscribe()`, `sessionStorage` (direkt, kein `browser.*` Wrapper nötig), `pixel.settings.*`, `init` event für Customer Privacy, `crypto.subtle` (verfügbar)
 
 ### Consent-Flow
 
@@ -146,13 +146,7 @@ gehasht bevor sie in den dataLayer gepusht werden:
 - **Telefon**: SHA-256, E.164-Format normalisiert → `user_data.phone_number` (als Array)
 - **Vorname / Nachname**: Lowercase, trimmed → `user_data.first_name` / `user_data.last_name` (unhashed, Google empfiehlt das für Enhanced Conversions)
 
-Hash-Implementierung: Shopify Pixel-Sandbox stellt `crypto.subtle` nicht zur Verfügung —
-stattdessen muss eine eigene SHA-256-Implementierung eingebettet werden (kein `import`).
-
-```js
-// Eigene SHA-256 Implementierung nötig (keine externe Dependencies möglich)
-async function sha256(message) { ... }
-```
+Hash-Implementierung: `crypto.subtle` ist in der Shopify Pixel-Sandbox verfügbar und wird direkt genutzt.
 
 ---
 
@@ -289,11 +283,11 @@ inline implementiert sein.
 ## Shopify Pixel Sandbox — Einschränkungen
 
 - **Kein `window` / `document`** direkter Zugriff — nur `browser.*` APIs
-- **Kein `localStorage`** — `browser.sessionStorage` ist verfügbar
+- **Kein `localStorage`** — `sessionStorage` ist direkt verfügbar
 - **Kein `import` / `require`** — Vanilla JS, alles inline
 - **Kein `fetch`** zu beliebigen URLs — aber GTM Script-Inject ist erlaubt
 - **Kein `console.log`** im Production-Pixel — nur in Preview/Development
-- **`crypto.subtle` nicht verfügbar** → eigene SHA-256 Implementierung nötig
+- **`crypto.subtle` verfügbar** → direkt für SHA-256 nutzbar
 - **GTM dataLayer**: `window.dataLayer` ist über den `browser` Kontext zugänglich
   nachdem GTM injiziert wurde
 - **`pixel.settings`**: Read-only, befüllt durch Shopify Admin UI
@@ -325,8 +319,7 @@ Single-company license. Redistribution prohibited.
   Verknüpfung zwischen Pixel und GTM Container
 - **Consent-API-Timing**: `customerPrivacy` ist nur im `init`-Event verfügbar —
   danach nur noch über `subscribe`-Callbacks. Pixel muss consent state intern cachen.
-- **SHA-256 Performance**: Inline SHA-256 ist langsamer als `crypto.subtle`,
-  aber für wenige Hashes pro Page irrelevant
+- **SHA-256**: `crypto.subtle` ist verfügbar und wird direkt genutzt — keine Inline-Implementierung nötig
 
 ---
 

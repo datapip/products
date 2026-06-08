@@ -14,43 +14,53 @@ const config = {
   // e.g. shop.example.com or example.com:
   websiteDomain: "",
 
+  // state the endpoint for your live GTM
+  // container:
+  gtmContainerUrl: "",
+
+  // Optional: state the endpoint for your
+  // development GTM container:
+  gtmDevContainerUrl: "",
+
   // select consent(s) to load GTM,
   // leave empty to load instantly:
   loadGtmOnFollowingConsents: ["preferences", "analytics", "marketing"],
 
-  // define if debug info should be logged
-  // to console in test environment:
+  // Optional: define if debug info should be
+  // logged to console in test environment:
   enableLogsInDev: true,
 
-  // define if debug info should be logged
-  // to console in live environment:
+  // Optional: define if debug info should be
+  // logged to console in live environment:
   enableLogsInProd: false,
 
   // select shopify user data to be pushed
   // in hashed format:
-  pushHashedUserDataToDataLayer: ["email"],
+  pushHashedUserData: ["firstName", "lastName", "email", "phone"],
 
   // select shopify user data to be pushed in
   // clear format:
-  pushClearUserDataToDataLayer: ["email"],
+  pushClearUserData: ["email"],
 };
 
 /* ---------------------- Variables ---------------------- */
 const environment = getEnvironment();
 let gtmLoaded = false;
 
-const userData = {
-  id: init?.data?.customer?.id || null,
-  ordersCount: init?.data?.customer?.ordersCount || null,
+let userData = {
+  userId: init?.data?.customer?.id || null,
+  userOrdersCount: init?.data?.customer?.ordersCount || null,
   firstName: (init?.data?.customer?.firstName || "").toLowerCase() || null,
+  firstNameHash: null,
   lastName: (init?.data?.customer?.lastName || "").toLowerCase() || null,
+  lastNameHash: null,
   email: (init?.data?.customer?.email || "").toLowerCase() || null,
   emailHash: null,
   phone: init?.data?.customer?.phone || null,
   phoneHash: null,
 };
 
-const userConsent = {
+let userConsent = {
   preferences: false,
   analytics: false,
   marketing: false,
@@ -58,6 +68,12 @@ const userConsent = {
 
 /* ---------------------- Hash user data ---------------------- */
 const hashesReady = (async () => {
+  userData.firstNameHash = userData.firstName
+    ? await sha256(userData.firstName)
+    : null;
+  userData.lastNameHash = userData.lastName
+    ? await sha256(userData.lastName)
+    : null;
   userData.emailHash = userData.email ? await sha256(userData.email) : null;
   userData.phoneHash = userData.phone ? await sha256(userData.phone) : null;
 })();
@@ -69,7 +85,7 @@ window.gtag = function () {
   window.dataLayer.push(arguments);
 };
 
-applyDebugLogging();
+initializeDebugLogs();
 
 /* ---------------------- Handling initial consent ---------------------- */
 gtag("consent", "default", {
@@ -139,120 +155,64 @@ api.customerPrivacy?.subscribe?.("visitorConsentCollected", (event) => {
   if (shouldInitGTM()) initializeGTM();
 });
 
-/**
- *
- *  CONTINUE REFACTORING BELOW
- *
- */
-
-/* ---------------------- Validation functions ---------------------- */
-function isValidEcommerce(event, ecommerce) {
-  if (!event || !ecommerce) {
-    pushError(event, "missing event or ecommerce payload");
-    return false;
-  }
-
-  if (event === "view_item_list") {
-    if (!ecommerce.items?.length || !hasValidItem(ecommerce.items)) {
-      pushError(event, "missing required ecommerce data");
-      return false;
-    }
-  }
-
-  if (
-    [
-      "view_item",
-      "add_to_cart",
-      "remove_from_cart",
-      "view_cart",
-      "begin_checkout",
-      "add_shipping_info",
-      "add_payment_info",
-    ].includes(event)
-  ) {
-    if (
-      !ecommerce.currency ||
-      ecommerce.value == null ||
-      !ecommerce.items?.length ||
-      !hasValidItem(ecommerce.items)
-    ) {
-      pushError(event, "missing required ecommerce data");
-      return false;
-    }
-  }
-
-  if (event === "purchase") {
-    if (
-      !ecommerce.currency ||
-      ecommerce.value == null ||
-      !ecommerce.transaction_id ||
-      !ecommerce.items?.length ||
-      !hasValidItem(ecommerce.items)
-    ) {
-      pushError(event, "missing required ecommerce data");
-      return false;
-    }
-  }
-
-  return true;
-}
-
-function hasValidItem(items) {
-  if (!items) return false;
-
-  return items?.some(
-    (item) =>
-      (typeof item.item_id === "string" && item.item_id.trim()) ||
-      (typeof item.item_name === "string" && item.item_name.trim()),
-  );
-}
-
-function pushError(event, message) {
-  console.error("[error]", message);
-  pushEvent({
-    event: "datalayer_error",
-    error_event: event,
-    error_message: message,
-  });
-}
-
 /* ---------------------- Page view ---------------------- */
 analytics?.subscribe?.("page_viewed", async (event) => {
   await hashesReady;
 
-  pushEvent({
-    event: "page_view",
+  const ga4EventName = "page_view";
+
+  const pageViewObject = {
     page_referrer: event?.context?.document?.referrer,
     page_location: event?.context?.document?.location?.href,
+    page_hash: event?.context?.document?.location?.hash,
+    page_search: event?.context?.document?.location?.search,
     page_title: event?.context?.document?.title,
-    page_type: pageType,
-    shop_country: shopCountry,
-    shop_language: shopLanguage,
-    environment: env,
-    user_id: userId,
-    user_orders_count: userOrdersCount,
-    user_email_hash: userEmailHash,
-    user_phone_hash: userPhoneHash,
-    __user_email: __userEmail,
-    __user_phone: __userPhone,
-  });
+    environment: environment,
+    user_id: userData.userId,
+    user_orders_count: userData.userOrdersCount,
+    user_first_name_hash: config.pushHashedUserData.includes("firstName")
+      ? userData.firstNameHash
+      : null,
+    user_last_name_hash: config.pushHashedUserData.includes("lastName")
+      ? userData.lastNameHash
+      : null,
+    user_email_hash: config.pushHashedUserData.includes("email")
+      ? userData.emailHash
+      : null,
+    user_phone_hash: config.pushHashedUserData.includes("phone")
+      ? userData.phoneHash
+      : null,
+    __user_first_name: config.pushHashedUserData.includes("firstName")
+      ? userData.firstName
+      : null,
+    __user_last_name: config.pushHashedUserData.includes("lastName")
+      ? userData.lastName
+      : null,
+    __user_email: config.pushClearUserData.includes("email")
+      ? userData.email
+      : null,
+    __user_phone: config.pushClearUserData.includes("phone")
+      ? userData.phone
+      : null,
+  };
+
+  if (validateEvent("page_view", { event: ga4EventName, ...pageViewObject })) {
+    pushEvent({ event: ga4EventName, ...pageViewObject });
+  }
 });
 
 /* ---------------------- Collection view ---------------------- */
 analytics?.subscribe?.("collection_viewed", (event) => {
-  flushEcommerce();
-
-  const ga4_event_name = "view_item_list";
+  const ga4EventName = "view_item_list";
 
   const collection = event?.data?.collection;
 
   if (!collection) {
-    pushError(ga4_event_name, "missing analytics api data");
+    pushError(ga4EventName, "missing analytics api data");
     return;
   }
 
-  const ga4_ecommerce_object = {
-    // currency: "",
+  const ga4EcommerceObject = {
     item_list_id: collection?.id,
     item_list_name: collection?.title,
     items: collection.productVariants
@@ -279,30 +239,24 @@ analytics?.subscribe?.("collection_viewed", (event) => {
       : [],
   };
 
-  if (!isValidEcommerce(ga4_event_name, ga4_ecommerce_object)) {
-    return;
+  if (validateEvent(ga4EventName, ga4EcommerceObject)) {
+    flushEcommerce();
+    pushEvent({ event: ga4EventName, ecommerce: ga4EcommerceObject });
   }
-
-  pushEvent({
-    event: ga4_event_name,
-    ecommerce: ga4_ecommerce_object,
-  });
 });
 
 /* ---------------------- Product viewed ---------------------- */
 analytics?.subscribe?.("product_viewed", (event) => {
-  flushEcommerce();
-
-  const ga4_event_name = "view_item";
+  const ga4EventName = "view_item";
 
   const variant = event?.data?.productVariant;
 
   if (!variant) {
-    pushError(ga4_event_name, "missing analytics api data");
+    pushError(ga4EventName, "missing analytics api data");
     return;
   }
 
-  const ga4_ecommerce_object = {
+  const ga4EcommerceObject = {
     currency: variant?.price?.currencyCode,
     value: Number(variant?.price?.amount || 0),
     items: [
@@ -329,30 +283,24 @@ analytics?.subscribe?.("product_viewed", (event) => {
     ],
   };
 
-  if (!isValidEcommerce(ga4_event_name, ga4_ecommerce_object)) {
-    return;
+  if (validateEvent(ga4EventName, ga4EcommerceObject)) {
+    flushEcommerce();
+    pushEvent({ event: ga4EventName, ecommerce: ga4EcommerceObject });
   }
-
-  pushEvent({
-    event: ga4_event_name,
-    ecommerce: ga4_ecommerce_object,
-  });
 });
 
 /* ---------------------- Cart actions ---------------------- */
 analytics?.subscribe?.("product_added_to_cart", (event) => {
-  flushEcommerce();
-
-  const ga4_event_name = "add_to_cart";
+  const ga4EventName = "add_to_cart";
 
   const cartLine = event?.data?.cartLine;
 
   if (!cartLine) {
-    pushError(ga4_event_name, "missing analytics api data");
+    pushError(ga4EventName, "missing analytics api data");
     return;
   }
 
-  const ga4_ecommerce_object = {
+  const ga4EcommerceObject = {
     currency: cartLine?.merchandise?.price?.currencyCode,
     value: Number(cartLine?.cost?.totalAmount?.amount || 0),
     items: [
@@ -383,29 +331,23 @@ analytics?.subscribe?.("product_added_to_cart", (event) => {
     ],
   };
 
-  if (!isValidEcommerce(ga4_event_name, ga4_ecommerce_object)) {
-    return;
+  if (validateEvent(ga4EventName, ga4EcommerceObject)) {
+    flushEcommerce();
+    pushEvent({ event: ga4EventName, ecommerce: ga4EcommerceObject });
   }
-
-  pushEvent({
-    event: ga4_event_name,
-    ecommerce: ga4_ecommerce_object,
-  });
 });
 
 analytics?.subscribe?.("product_removed_from_cart", (event) => {
-  flushEcommerce();
-
-  const ga4_event_name = "remove_from_cart";
+  const ga4EventName = "remove_from_cart";
 
   const cartLine = event?.data?.cartLine;
 
   if (!cartLine) {
-    pushError(ga4_event_name, "missing analytics api data");
+    pushError(ga4EventName, "missing analytics api data");
     return;
   }
 
-  const ga4_ecommerce_object = {
+  const ga4EcommerceObject = {
     currency: cartLine?.merchandise?.price?.currencyCode,
     value: Number(cartLine?.cost?.totalAmount?.amount || 0),
     items: [
@@ -436,29 +378,23 @@ analytics?.subscribe?.("product_removed_from_cart", (event) => {
     ],
   };
 
-  if (!isValidEcommerce(ga4_event_name, ga4_ecommerce_object)) {
-    return;
+  if (validateEvent(ga4EventName, ga4EcommerceObject)) {
+    flushEcommerce();
+    pushEvent({ event: ga4EventName, ecommerce: ga4EcommerceObject });
   }
-
-  pushEvent({
-    event: ga4_event_name,
-    ecommerce: ga4_ecommerce_object,
-  });
 });
 
 analytics?.subscribe?.("cart_viewed", (event) => {
-  flushEcommerce();
-
-  const ga4_event_name = "view_cart";
+  const ga4EventName = "view_cart";
 
   const cart = event?.data?.cart;
 
   if (!cart) {
-    pushError(ga4_event_name, "missing analytics api data");
+    pushError(ga4EventName, "missing analytics api data");
     return;
   }
 
-  const ga4_ecommerce_object = {
+  const ga4EcommerceObject = {
     currency: cart?.cost?.totalAmount?.currencyCode,
     value: Number(cart?.cost?.totalAmount?.amount || 0),
     items: cart.lines
@@ -489,30 +425,24 @@ analytics?.subscribe?.("cart_viewed", (event) => {
       : [],
   };
 
-  if (!isValidEcommerce(ga4_event_name, ga4_ecommerce_object)) {
-    return;
+  if (validateEvent(ga4EventName, ga4EcommerceObject)) {
+    flushEcommerce();
+    pushEvent({ event: ga4EventName, ecommerce: ga4EcommerceObject });
   }
-
-  pushEvent({
-    event: ga4_event_name,
-    ecommerce: ga4_ecommerce_object,
-  });
 });
 
 /* ---------------------- Checkout ---------------------- */
 analytics?.subscribe?.("checkout_started", (event) => {
-  flushEcommerce();
-
-  const ga4_event_name = "begin_checkout";
+  const ga4EventName = "begin_checkout";
 
   const checkout = event?.data?.checkout;
 
   if (!checkout) {
-    pushError(ga4_event_name, "missing analytics api data");
+    pushError(ga4EventName, "missing analytics api data");
     return;
   }
 
-  const ga4_ecommerce_object = {
+  const ga4EcommerceObject = {
     currency: checkout?.totalPrice?.currencyCode || checkout?.currencyCode,
     value: Number(checkout?.totalPrice?.amount || 0),
     coupon: checkout?.discountApplications?.[0]?.title || "",
@@ -544,38 +474,29 @@ analytics?.subscribe?.("checkout_started", (event) => {
       : [],
   };
 
-  if (!isValidEcommerce(ga4_event_name, ga4_ecommerce_object)) {
-    return;
+  if (validateEvent(ga4EventName, ga4EcommerceObject)) {
+    flushEcommerce();
+    pushEvent({ event: ga4EventName, ecommerce: ga4EcommerceObject });
   }
-
-  pushEvent({
-    event: ga4_event_name,
-    ecommerce: ga4_ecommerce_object,
-  });
 });
 
 analytics?.subscribe?.("checkout_address_info_submitted", async (event) => {
-  flushEcommerce();
-
-  const ga4_event_name = "add_shipping_info";
+  const ga4EventName = "add_shipping_info";
 
   const checkout = event?.data?.checkout;
 
   if (!checkout) {
-    pushError(ga4_event_name, "missing analytics api data");
+    pushError(ga4EventName, "missing analytics api data");
     return;
   }
 
-  if (checkout.email) {
-    __userEmail = (checkout.email || "").toLowerCase() || null;
-    userEmailHash = await sha256(__userEmail);
-  }
+  await updateUserData(checkout);
 
-  const ga4_ecommerce_object = {
+  const ga4EcommerceObject = {
     currency: checkout?.totalPrice?.currencyCode || checkout?.currencyCode,
     value: Number(checkout?.totalPrice?.amount || 0),
     coupon: checkout?.discountApplications?.[0]?.title || "",
-    shipping_tier: checkout?.delivery?.selectedDeliveryOptions?.type,
+    shipping_tier: checkout?.delivery?.selectedDeliveryOptions?.[0]?.type,
     items: checkout?.lineItems
       ? checkout.lineItems.map((line, index) => ({
           item_id:
@@ -605,35 +526,56 @@ analytics?.subscribe?.("checkout_address_info_submitted", async (event) => {
       : [],
   };
 
-  if (!isValidEcommerce(ga4_event_name, ga4_ecommerce_object)) {
-    return;
+  if (validateEvent(ga4EventName, ga4EcommerceObject)) {
+    flushEcommerce();
+    pushEvent({
+      event: ga4EventName,
+      ecommerce: ga4EcommerceObject,
+      user_first_name_hash: config.pushHashedUserData.includes("firstName")
+        ? userData.firstNameHash
+        : null,
+      user_last_name_hash: config.pushHashedUserData.includes("lastName")
+        ? userData.lastNameHash
+        : null,
+      user_email_hash: config.pushHashedUserData.includes("email")
+        ? userData.emailHash
+        : null,
+      user_phone_hash: config.pushHashedUserData.includes("phone")
+        ? userData.phoneHash
+        : null,
+      __user_first_name: config.pushHashedUserData.includes("firstName")
+        ? userData.firstName
+        : null,
+      __user_last_name: config.pushHashedUserData.includes("lastName")
+        ? userData.lastName
+        : null,
+      __user_email: config.pushClearUserData.includes("email")
+        ? userData.email
+        : null,
+      __user_phone: config.pushClearUserData.includes("phone")
+        ? userData.phone
+        : null,
+    });
   }
-
-  pushEvent({
-    event: ga4_event_name,
-    ecommerce: ga4_ecommerce_object,
-    user_email_hash: userEmailHash,
-    __user_email: __userEmail,
-  });
 });
 
-analytics?.subscribe?.("payment_info_submitted", (event) => {
-  flushEcommerce();
-
-  const ga4_event_name = "add_payment_info";
+analytics?.subscribe?.("payment_info_submitted", async (event) => {
+  const ga4EventName = "add_payment_info";
 
   const checkout = event?.data?.checkout;
 
   if (!checkout) {
-    pushError(ga4_event_name, "missing analytics api data");
+    pushError(ga4EventName, "missing analytics api data");
     return;
   }
 
-  const ga4_ecommerce_object = {
+  await updateUserData(checkout);
+
+  const ga4EcommerceObject = {
     currency: checkout?.totalPrice?.currencyCode || checkout?.currencyCode,
     value: Number(checkout?.totalPrice?.amount || 0),
     coupon: checkout?.discountApplications?.[0]?.title || "",
-    payment_type: String(checkout?.paymentMethod || ""),
+    payment_type: checkout?.transactions?.[0]?.paymentMethod?.name || "",
     items: checkout?.lineItems
       ? checkout.lineItems.map((line, index) => ({
           item_id:
@@ -663,34 +605,52 @@ analytics?.subscribe?.("payment_info_submitted", (event) => {
       : [],
   };
 
-  if (!isValidEcommerce(ga4_event_name, ga4_ecommerce_object)) {
-    return;
+  if (validateEvent(ga4EventName, ga4EcommerceObject)) {
+    flushEcommerce();
+    pushEvent({
+      event: ga4EventName,
+      ecommerce: ga4EcommerceObject,
+      user_first_name_hash: config.pushHashedUserData.includes("firstName")
+        ? userData.firstNameHash
+        : null,
+      user_last_name_hash: config.pushHashedUserData.includes("lastName")
+        ? userData.lastNameHash
+        : null,
+      user_email_hash: config.pushHashedUserData.includes("email")
+        ? userData.emailHash
+        : null,
+      user_phone_hash: config.pushHashedUserData.includes("phone")
+        ? userData.phoneHash
+        : null,
+      __user_first_name: config.pushHashedUserData.includes("firstName")
+        ? userData.firstName
+        : null,
+      __user_last_name: config.pushHashedUserData.includes("lastName")
+        ? userData.lastName
+        : null,
+      __user_email: config.pushClearUserData.includes("email")
+        ? userData.email
+        : null,
+      __user_phone: config.pushClearUserData.includes("phone")
+        ? userData.phone
+        : null,
+    });
   }
-
-  pushEvent({
-    event: ga4_event_name,
-    ecommerce: ga4_ecommerce_object,
-  });
 });
 
 analytics?.subscribe?.("checkout_completed", async (event) => {
-  flushEcommerce();
-
-  const ga4_event_name = "purchase";
+  const ga4EventName = "purchase";
 
   const checkout = event?.data?.checkout;
 
   if (!checkout) {
-    pushError(ga4_event_name, "missing analytics api data");
+    pushError(ga4EventName, "missing analytics api data");
     return;
   }
 
-  if (checkout.email) {
-    __userEmail = (checkout.email || "").toLowerCase() || null;
-    userEmailHash = await sha256(__userEmail);
-  }
+  await updateUserData(checkout);
 
-  const ga4_ecommerce_object = {
+  const ga4EcommerceObject = {
     currency: checkout?.totalPrice?.currencyCode || checkout?.currencyCode,
     value: Number(checkout?.totalPrice?.amount || 0),
     new_customer: checkout?.order?.customer?.isFirstOrder === true,
@@ -729,24 +689,56 @@ analytics?.subscribe?.("checkout_completed", async (event) => {
       : [],
   };
 
-  if (!isValidEcommerce(ga4_event_name, ga4_ecommerce_object)) {
-    return;
+  if (validateEvent(ga4EventName, ga4EcommerceObject)) {
+    flushEcommerce();
+    pushEvent({
+      event: ga4EventName,
+      ecommerce: ga4EcommerceObject,
+      user_first_name_hash: config.pushHashedUserData.includes("firstName")
+        ? userData.firstNameHash
+        : null,
+      user_last_name_hash: config.pushHashedUserData.includes("lastName")
+        ? userData.lastNameHash
+        : null,
+      user_email_hash: config.pushHashedUserData.includes("email")
+        ? userData.emailHash
+        : null,
+      user_phone_hash: config.pushHashedUserData.includes("phone")
+        ? userData.phoneHash
+        : null,
+      __user_first_name: config.pushHashedUserData.includes("firstName")
+        ? userData.firstName
+        : null,
+      __user_last_name: config.pushHashedUserData.includes("lastName")
+        ? userData.lastName
+        : null,
+      __user_email: config.pushClearUserData.includes("email")
+        ? userData.email
+        : null,
+      __user_phone: config.pushClearUserData.includes("phone")
+        ? userData.phone
+        : null,
+    });
   }
-
-  pushEvent({
-    event: ga4_event_name,
-    ecommerce: ga4_ecommerce_object,
-    user_email_hash: userEmailHash,
-    __user_email: __userEmail,
-  });
 });
 
 /* ---------------------- Search ---------------------- */
 analytics?.subscribe?.("search_submitted", (event) => {
-  pushEvent({
-    event: "search",
-    search_term: event?.data?.searchResult?.query || "",
-  });
+  const ga4EventName = "search";
+
+  const ga4SearchTerm = event?.data?.searchResult?.query || "";
+
+  if (!ga4SearchTerm) {
+    pushError(ga4EventName, "missing analytics api data");
+    return;
+  }
+
+  if (validateEvent(ga4EventName, { search_term: ga4SearchTerm })) {
+    pushEvent({
+      event: ga4EventName,
+      search_term: ga4SearchTerm,
+    });
+  }
 });
 
 /* ---------------------- shopify alerts ---------------------- */
@@ -773,6 +765,102 @@ analytics?.subscribe?.("ui_extension_errored", (event) => {
     error_type: event?.data?.error?.type,
   });
 });
+
+/* ---------------------- Validation functions ---------------------- */
+const EVENT_REQUIRED_PARAMS = {
+  page_view: ["page_location"],
+  view_item_list: ["items"],
+  view_item: ["currency", "value", "items"],
+  add_to_cart: ["currency", "value", "items"],
+  remove_from_cart: ["currency", "value", "items"],
+  view_cart: ["currency", "value"],
+  begin_checkout: ["currency", "value", "items"],
+  add_shipping_info: ["currency", "value", "shipping_tier", "items"],
+  add_payment_info: ["currency", "value", "payment_type", "items"],
+  purchase: ["currency", "value", "transaction_id", "items"],
+  search: ["search_term"],
+};
+
+const PARAM_VALUE_FORMAT = {
+  page_location: (input) => {
+    try {
+      new URL(input);
+      return true;
+    } catch (err) {
+      return false;
+    }
+  },
+  currency: (input) => {
+    return /^[A-Z]{3}$/.test(input);
+  },
+  value: (input) => {
+    return typeof input === "number";
+  },
+  shipping_tier: (input) => {
+    return typeof input === "string";
+  },
+  payment_type: (input) => {
+    return typeof input === "string";
+  },
+  transaction_id: (input) => {
+    return typeof input === "string";
+  },
+  items: (input) => {
+    return (
+      input.length > 0 &&
+      input.length ===
+        input.filter(
+          (item) =>
+            typeof item.item_id === "string" &&
+            typeof item.item_name === "string",
+        ).length
+    );
+  },
+  search_term: (input) => {
+    return typeof input === "string";
+  },
+};
+
+function validateEvent(eventName, params) {
+  const requiredParams = EVENT_REQUIRED_PARAMS[eventName];
+
+  if (!requiredParams) {
+    console.warn(`[debug] unknown event: "${eventName}"`);
+    return false;
+  }
+
+  const errors = [];
+
+  for (const param of requiredParams) {
+    if (
+      !(param in params) ||
+      params[param] === null ||
+      params[param] === undefined
+    ) {
+      errors.push(`"${param}" is missing`);
+      continue;
+    }
+
+    // Check format if a validator exists
+    const formatValidator = PARAM_VALUE_FORMAT[param];
+    if (formatValidator && !formatValidator(params[param])) {
+      errors.push(
+        `"${param}" has an invalid value: ${JSON.stringify(params[param])}`,
+      );
+    }
+  }
+
+  if (errors.length > 0) {
+    console.groupCollapsed(`[debug] warning - ${eventName} incorrect`);
+    console.log(errors);
+    console.groupEnd();
+
+    pushError(eventName, errors.join(" | "));
+    return false;
+  }
+
+  return true;
+}
 
 /* ---------------------- Utility functions ---------------------- */
 function getEnvironment() {
@@ -804,28 +892,33 @@ function shouldInitGTM() {
 }
 
 function initializeGTM() {
-  (function (w, d, s, l, i) {
+  const isProd = getEnvironment() === "production";
+  const gtmSource = config.gtmDevContainerUrl
+    ? isProd
+      ? config.gtmContainerUrl
+      : config.gtmDevContainerUrl
+    : config.gtmContainerUrl;
+
+  if (!gtmSource) {
+    console.warn(
+      "[debug] GTM container URL is missing - add under 'config.gtmContainerUrl'.",
+    );
+    return;
+  }
+
+  (function (w, d, s, l) {
     w[l] = w[l] || [];
     w[l].push({ "gtm.start": new Date().getTime(), event: "gtm.js" });
     var f = d.getElementsByTagName(s)[0],
-      j = d.createElement(s),
-      dl = l != "dataLayer" ? "&l=" + l : "";
+      j = d.createElement(s);
     j.async = true;
-    j.src =
-      "https://" +
-      (customEndpointGTM ? customEndpointGTM : "www.googletagmanager.com") +
-      "/gtm.js?id=" +
-      i +
-      dl +
-      (isProd
-        ? ""
-        : "&gtm_auth=QKY8WHHpfGJxmAMhJP4-Wg&gtm_preview=env-3&gtm_cookies_win=x");
+    j.src = gtmSource;
     f?.parentNode?.insertBefore(j, f);
-  })(window, document, "script", "dataLayer", "GTM-K7Q2BTR2");
+  })(window, document, "script", "dataLayer");
   gtmLoaded = true;
 }
 
-function applyDebugLogs() {
+function initializeDebugLogs() {
   if (!config.enableLogsInDev && !config.enableLogsInProd) return;
 
   const isProd = getEnvironment() === "production";
@@ -851,62 +944,46 @@ function applyDebugLogs() {
   console.groupEnd();
 }
 
-function isLocalePrefix(string) {
-  return /^[a-z]{2}-[a-z]{2}$/.test(string);
-}
-
-function getLocaleFromPathname(pathname) {
-  if (!pathname || pathname === "/") return null;
-  const segments = pathname.split("/").filter(Boolean);
-  for (const segment of segments) {
-    if (isLocalePrefix(segment)) return segment;
-  }
-  return null;
-}
-
-function getLanguageFromPathname(pathname) {
-  const locale = getLocaleFromPathname(pathname);
-  return locale ? locale.split("-")[0] : defaultShopLanguage;
-}
-
-function getCountryFromPathname(pathname) {
-  const locale = getLocaleFromPathname(pathname);
-  if (!locale || !locale.includes("-")) return defaultShopCountry;
-  return locale.split("-")[1];
-}
-
-function getTypeFromPathname(pathname) {
-  if (!pathname || pathname === "/") {
-    return "home";
-  }
-
-  const lookup = {
-    pages: "page",
-    collections: "collection",
-    products: "product",
-    checkout: "checkout",
-    checkouts: "checkout",
-    blogs: "blog",
-    articles: "article",
-    search: "search",
-    cart: "cart",
-    account: "account",
-  };
-
-  const segments = pathname.split("/").filter(Boolean);
-
-  // Skip locale prefix wherever it appears — first segment or mid-path
-  const typeSegment = segments.find((s) => !isLocalePrefix(s));
-
-  return lookup[typeSegment] || "other";
-}
-
 function flushEcommerce() {
   pushEvent({ ecommerce: null });
 }
 
 function pushEvent(data) {
-  dataLayer.push(data);
+  window.dataLayer.push(data);
+}
+
+function pushError(event, message) {
+  pushEvent({
+    event: "datalayer_error",
+    error_event: event,
+    error_message: message,
+  });
+}
+
+async function updateUserData(checkout) {
+  const newEmail = checkout.email?.toLowerCase();
+  if (newEmail && newEmail !== userData.email) {
+    userData.email = newEmail;
+    userData.emailHash = await sha256(newEmail);
+  }
+
+  if (checkout.phone && checkout.phone !== userData.phone) {
+    userData.phone = checkout.phone;
+    userData.phoneHash = await sha256(userData.phone);
+  }
+
+  const newFirstName = checkout.billingAddress?.firstName?.toLowerCase();
+  if (newFirstName && newFirstName !== userData.firstName) {
+    userData.firstName = newFirstName;
+    userData.firstNameHash = await sha256(newFirstName);
+  }
+
+  const newLastName = checkout.billingAddress?.lastName?.toLowerCase();
+
+  if (newLastName && newLastName !== userData.lastName) {
+    userData.lastName = newLastName;
+    userData.lastNameHash = await sha256(newLastName);
+  }
 }
 
 async function sha256(text) {
