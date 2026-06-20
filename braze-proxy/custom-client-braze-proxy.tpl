@@ -150,6 +150,8 @@ ___TEMPLATE_PARAMETERS___
 
 ___SANDBOXED_JS_FOR_SERVER___
 /**
+ * Version 1.0.1
+ *
  * © 2026 datapip.de — https://datapip.gumroad.com/l/braze-sgtm-proxy
  * Unofficial community integration. Not affiliated with or endorsed by Braze, Inc.
  * Braze™ is a trademark of Braze, Inc.
@@ -196,6 +198,7 @@ const CONFIG = {
     "x-braze-datacenters",
     "x-braze-device-id",
     "x-braze-datarequest",
+    "x-braze-auth-signature",
     "braze-sync-retry-count",
     "x-braze-last-req-ms-ago",
     "x-braze-req-attempt",
