@@ -40,8 +40,11 @@ const config = {
 
   // select shopify user data to be pushed in
   // clear format:
-  pushClearUserData: ["email"],
+  pushClearUserData: [],
 };
+
+/* ------------------------ Check ------------------------ */
+checkConfig();
 
 /* ---------------------- Variables ---------------------- */
 const environment = getEnvironment();
@@ -181,11 +184,11 @@ analytics?.subscribe?.("page_viewed", async (event) => {
     user_phone_hash:
       config.pushHashedUserData.includes("phone") ? userData.phoneHash : null,
     __user_first_name:
-      config.pushHashedUserData.includes("firstName") ?
+      config.pushClearUserData.includes("firstName") ?
         userData.firstName
       : null,
     __user_last_name:
-      config.pushHashedUserData.includes("lastName") ? userData.lastName : null,
+      config.pushClearUserData.includes("lastName") ? userData.lastName : null,
     __user_email:
       config.pushClearUserData.includes("email") ? userData.email : null,
     __user_phone:
@@ -495,7 +498,7 @@ analytics?.subscribe?.("checkout_address_info_submitted", async (event) => {
     currency: checkout?.totalPrice?.currencyCode || checkout?.currencyCode,
     value: Number(checkout?.totalPrice?.amount || 0),
     coupon: checkout?.discountApplications?.[0]?.title || "",
-    shipping_tier: checkout?.delivery?.selectedDeliveryOptions?.[0]?.type,
+    shipping_tier: checkout?.delivery?.selectedDeliveryOptions?.[0]?.type || "",
     items:
       checkout?.lineItems ?
         checkout.lineItems.map((line, index) => ({
@@ -544,11 +547,11 @@ analytics?.subscribe?.("checkout_address_info_submitted", async (event) => {
       user_phone_hash:
         config.pushHashedUserData.includes("phone") ? userData.phoneHash : null,
       __user_first_name:
-        config.pushHashedUserData.includes("firstName") ?
+        config.pushClearUserData.includes("firstName") ?
           userData.firstName
         : null,
       __user_last_name:
-        config.pushHashedUserData.includes("lastName") ?
+        config.pushClearUserData.includes("lastName") ?
           userData.lastName
         : null,
       __user_email:
@@ -624,11 +627,11 @@ analytics?.subscribe?.("payment_info_submitted", async (event) => {
       user_phone_hash:
         config.pushHashedUserData.includes("phone") ? userData.phoneHash : null,
       __user_first_name:
-        config.pushHashedUserData.includes("firstName") ?
+        config.pushClearUserData.includes("firstName") ?
           userData.firstName
         : null,
       __user_last_name:
-        config.pushHashedUserData.includes("lastName") ?
+        config.pushClearUserData.includes("lastName") ?
           userData.lastName
         : null,
       __user_email:
@@ -654,9 +657,11 @@ analytics?.subscribe?.("checkout_completed", async (event) => {
   const ga4EcommerceObject = {
     currency: checkout?.totalPrice?.currencyCode || checkout?.currencyCode,
     value: Number(checkout?.totalPrice?.amount || 0),
-    new_customer: checkout?.order?.customer?.isFirstOrder === true,
+    new_customer: checkout?.order?.customer?.isFirstOrder ?? null,
     customer_type:
-      checkout?.order?.customer?.isFirstOrder === false ? "returning" : "new",
+      checkout?.order?.customer?.isFirstOrder === true ? "new"
+      : checkout?.order?.customer?.isFirstOrder === false ? "returning"
+      : null,
     transaction_id: checkout?.order?.id || checkout?.token,
     coupon: checkout?.discountApplications?.[0]?.title || "",
     shipping: Number(checkout?.shippingLine?.price?.amount || 0),
@@ -709,11 +714,11 @@ analytics?.subscribe?.("checkout_completed", async (event) => {
       user_phone_hash:
         config.pushHashedUserData.includes("phone") ? userData.phoneHash : null,
       __user_first_name:
-        config.pushHashedUserData.includes("firstName") ?
+        config.pushClearUserData.includes("firstName") ?
           userData.firstName
         : null,
       __user_last_name:
-        config.pushHashedUserData.includes("lastName") ?
+        config.pushClearUserData.includes("lastName") ?
           userData.lastName
         : null,
       __user_email:
@@ -769,6 +774,29 @@ analytics?.subscribe?.("ui_extension_errored", (event) => {
 });
 
 /* ---------------------- Validation functions ---------------------- */
+function checkConfig() {
+  const warnings = [];
+
+  if (!config.websiteDomain) {
+    warnings.push(
+      'config.websiteDomain is not set — environment detection defaults to "production".',
+    );
+  }
+
+  if (!config.gtmContainerUrl) {
+    warnings.push(
+      "config.gtmContainerUrl is not set — Google Tag Manager will not load.",
+    );
+  }
+
+  if (warnings.length > 0) {
+    console.warn(
+      "[Shopify Custom Pixel] Setup incomplete:\n" +
+        warnings.map((w) => `  • ${w}`).join("\n"),
+    );
+  }
+}
+
 const EVENT_REQUIRED_PARAMS = {
   page_view: ["page_location"],
   view_item_list: ["items"],
@@ -878,22 +906,16 @@ function shouldInitGTM() {
   if (gtmLoaded) return false;
 
   if (config.loadGtmOnFollowingConsents.length > 0) {
-    if (
-      config.loadGtmOnFollowingConsents.filter(
-        (category) => userConsent[category],
-      ).length > 0
-    ) {
-      return true;
-    } else {
-      return false;
-    }
-  } else {
-    return true;
+    return config.loadGtmOnFollowingConsents.some(
+      (category) => userConsent[category],
+    );
   }
+
+  return true;
 }
 
 function initializeGTM() {
-  const isProd = getEnvironment() === "production";
+  const isProd = environment === "production";
   const gtmSource =
     config.gtmDevContainerUrl ?
       isProd ? config.gtmContainerUrl
@@ -922,7 +944,7 @@ function initializeGTM() {
 function initializeDebugLogs() {
   if (!config.enableLogsInDev && !config.enableLogsInProd) return;
 
-  const isProd = getEnvironment() === "production";
+  const isProd = environment === "production";
 
   if (isProd && !config.enableLogsInProd) return;
 
