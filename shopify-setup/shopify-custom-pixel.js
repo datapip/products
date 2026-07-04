@@ -98,9 +98,9 @@ gtag("consent", "default", {
 
 window.dataLayer.push({
   event: "consent_default",
-  preferences: userConsent.preferences,
-  analytics: userConsent.analytics,
-  marketing: userConsent.marketing,
+  consent_preferences: userConsent.preferences,
+  consent_analytics: userConsent.analytics,
+  consent_marketing: userConsent.marketing,
 });
 
 if (
@@ -123,9 +123,9 @@ if (
 
   window.dataLayer.push({
     event: "consent_update",
-    preferences: userConsent.preferences,
-    analytics: userConsent.analytics,
-    marketing: userConsent.marketing,
+    consent_preferences: userConsent.preferences,
+    consent_analytics: userConsent.analytics,
+    consent_marketing: userConsent.marketing,
   });
 }
 
@@ -148,9 +148,9 @@ api.customerPrivacy?.subscribe?.("visitorConsentCollected", (event) => {
 
   window.dataLayer.push({
     event: "consent_update",
-    preferences: userConsent.preferences,
-    analytics: userConsent.analytics,
-    marketing: userConsent.marketing,
+    consent_preferences: userConsent.preferences,
+    consent_analytics: userConsent.analytics,
+    consent_marketing: userConsent.marketing,
   });
 
   if (shouldInitGTM()) initializeGTM();
