@@ -1,0 +1,6 @@
+# Playwright MCP test artifacts (browser snapshots, console/network dumps)
+.playwright-mcp/
+
+# OS junk
+.DS_Store
+Thumbs.db
