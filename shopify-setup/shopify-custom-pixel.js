@@ -44,13 +44,17 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   // logged to console in live environment:
   enableLogsInProd: false,
 
-  // select shopify user data to be pushed
-  // in hashed format:
+  // select shopify user data to be
+  // pushed in hashed format.
+  // Available user data:
+  // "firstName", "lastName", "email", "phone"
   pushHashedUserData: ["firstName", "lastName", "email", "phone"],
 
-  // select shopify user data to be pushed in
-  // clear format:
-  pushClearUserData: [],
+  // select shopify user data to be
+  // pushed in clear format.
+  // Available user data:
+  // "firstName", "lastName", "email", "phone", "street", "city", "region", "zip", "country"
+  pushClearUserData: ["street", "city", "region", "zip", "country"],
 };
 
 /* ------------------------ Check ------------------------ */
@@ -64,14 +68,20 @@ let pendingEvents = [];
 let userData = {
   userId: init?.data?.customer?.id || null,
   userOrdersCount: init?.data?.customer?.ordersCount || null,
-  firstName: (init?.data?.customer?.firstName || "").toLowerCase() || null,
+  firstName:
+    (init?.data?.customer?.firstName || "").trim().toLowerCase() || null,
   firstNameHash: null,
-  lastName: (init?.data?.customer?.lastName || "").toLowerCase() || null,
+  lastName: (init?.data?.customer?.lastName || "").trim().toLowerCase() || null,
   lastNameHash: null,
-  email: (init?.data?.customer?.email || "").toLowerCase() || null,
+  email: (init?.data?.customer?.email || "").trim().toLowerCase() || null,
   emailHash: null,
-  phone: init?.data?.customer?.phone || null,
+  phone: (init?.data?.customer?.phone || "").trim() || null,
   phoneHash: null,
+  street: null,
+  city: null,
+  region: null,
+  zip: null,
+  country: null,
 };
 
 let userConsent = {
@@ -180,34 +190,14 @@ analytics?.subscribe?.("page_viewed", async (event) => {
     page_search: event?.context?.document?.location?.search,
     page_title: event?.context?.document?.title,
     environment: environment,
-    user_id: userData.userId,
-    user_orders_count: userData.userOrdersCount,
-    user_first_name_hash:
-      config.pushHashedUserData.includes("firstName") ?
-        userData.firstNameHash
-      : null,
-    user_last_name_hash:
-      config.pushHashedUserData.includes("lastName") ?
-        userData.lastNameHash
-      : null,
-    user_email_hash:
-      config.pushHashedUserData.includes("email") ? userData.emailHash : null,
-    user_phone_hash:
-      config.pushHashedUserData.includes("phone") ? userData.phoneHash : null,
-    __user_first_name:
-      config.pushClearUserData.includes("firstName") ?
-        userData.firstName
-      : null,
-    __user_last_name:
-      config.pushClearUserData.includes("lastName") ? userData.lastName : null,
-    __user_email:
-      config.pushClearUserData.includes("email") ? userData.email : null,
-    __user_phone:
-      config.pushClearUserData.includes("phone") ? userData.phone : null,
   };
 
+  const userDataObject = getUserData();
+  userDataObject.id = userData.userId;
+  userDataObject.orders_count = userData.userOrdersCount;
+
   if (validateEvent("page_view", { event: ga4EventName, ...pageViewObject })) {
-    pushEvent({ event: ga4EventName, ...pageViewObject });
+    pushEvent({ event: ga4EventName, ...pageViewObject, user: userDataObject });
   }
 });
 
@@ -501,31 +491,11 @@ analytics?.subscribe?.("checkout_address_info_submitted", async (event) => {
   }
 
   await updateUserData(checkout);
+  const userDataObject = getUserData();
 
   window.dataLayer.push({
     event: "user_update",
-    user_first_name_hash:
-      config.pushHashedUserData.includes("firstName") ?
-        userData.firstNameHash
-      : null,
-    user_last_name_hash:
-      config.pushHashedUserData.includes("lastName") ?
-        userData.lastNameHash
-      : null,
-    user_email_hash:
-      config.pushHashedUserData.includes("email") ? userData.emailHash : null,
-    user_phone_hash:
-      config.pushHashedUserData.includes("phone") ? userData.phoneHash : null,
-    __user_first_name:
-      config.pushClearUserData.includes("firstName") ?
-        userData.firstName
-      : null,
-    __user_last_name:
-      config.pushClearUserData.includes("lastName") ? userData.lastName : null,
-    __user_email:
-      config.pushClearUserData.includes("email") ? userData.email : null,
-    __user_phone:
-      config.pushClearUserData.includes("phone") ? userData.phone : null,
+    user: userDataObject,
   });
 });
 
@@ -579,35 +549,14 @@ analytics?.subscribe?.("checkout_shipping_info_submitted", async (event) => {
       : [],
   };
 
+  const userDataObject = getUserData();
+
   if (validateEvent(ga4EventName, ga4EcommerceObject)) {
     flushEcommerce();
     pushEvent({
       event: ga4EventName,
       ecommerce: ga4EcommerceObject,
-      user_first_name_hash:
-        config.pushHashedUserData.includes("firstName") ?
-          userData.firstNameHash
-        : null,
-      user_last_name_hash:
-        config.pushHashedUserData.includes("lastName") ?
-          userData.lastNameHash
-        : null,
-      user_email_hash:
-        config.pushHashedUserData.includes("email") ? userData.emailHash : null,
-      user_phone_hash:
-        config.pushHashedUserData.includes("phone") ? userData.phoneHash : null,
-      __user_first_name:
-        config.pushClearUserData.includes("firstName") ?
-          userData.firstName
-        : null,
-      __user_last_name:
-        config.pushClearUserData.includes("lastName") ?
-          userData.lastName
-        : null,
-      __user_email:
-        config.pushClearUserData.includes("email") ? userData.email : null,
-      __user_phone:
-        config.pushClearUserData.includes("phone") ? userData.phone : null,
+      user: userDataObject,
     });
   }
 });
@@ -662,35 +611,14 @@ analytics?.subscribe?.("payment_info_submitted", async (event) => {
       : [],
   };
 
+  const userDataObject = getUserData();
+
   if (validateEvent(ga4EventName, ga4EcommerceObject)) {
     flushEcommerce();
     pushEvent({
       event: ga4EventName,
       ecommerce: ga4EcommerceObject,
-      user_first_name_hash:
-        config.pushHashedUserData.includes("firstName") ?
-          userData.firstNameHash
-        : null,
-      user_last_name_hash:
-        config.pushHashedUserData.includes("lastName") ?
-          userData.lastNameHash
-        : null,
-      user_email_hash:
-        config.pushHashedUserData.includes("email") ? userData.emailHash : null,
-      user_phone_hash:
-        config.pushHashedUserData.includes("phone") ? userData.phoneHash : null,
-      __user_first_name:
-        config.pushClearUserData.includes("firstName") ?
-          userData.firstName
-        : null,
-      __user_last_name:
-        config.pushClearUserData.includes("lastName") ?
-          userData.lastName
-        : null,
-      __user_email:
-        config.pushClearUserData.includes("email") ? userData.email : null,
-      __user_phone:
-        config.pushClearUserData.includes("phone") ? userData.phone : null,
+      user: userDataObject,
     });
   }
 });
@@ -749,35 +677,14 @@ analytics?.subscribe?.("checkout_completed", async (event) => {
       : [],
   };
 
+  const userDataObject = getUserData();
+
   if (validateEvent(ga4EventName, ga4EcommerceObject)) {
     flushEcommerce();
     pushEvent({
       event: ga4EventName,
       ecommerce: ga4EcommerceObject,
-      user_first_name_hash:
-        config.pushHashedUserData.includes("firstName") ?
-          userData.firstNameHash
-        : null,
-      user_last_name_hash:
-        config.pushHashedUserData.includes("lastName") ?
-          userData.lastNameHash
-        : null,
-      user_email_hash:
-        config.pushHashedUserData.includes("email") ? userData.emailHash : null,
-      user_phone_hash:
-        config.pushHashedUserData.includes("phone") ? userData.phoneHash : null,
-      __user_first_name:
-        config.pushClearUserData.includes("firstName") ?
-          userData.firstName
-        : null,
-      __user_last_name:
-        config.pushClearUserData.includes("lastName") ?
-          userData.lastName
-        : null,
-      __user_email:
-        config.pushClearUserData.includes("email") ? userData.email : null,
-      __user_phone:
-        config.pushClearUserData.includes("phone") ? userData.phone : null,
+      user: userDataObject,
     });
   }
 });
@@ -1040,6 +947,39 @@ function pushError(event, message) {
   });
 }
 
+function getUserData() {
+  return {
+    first_name_hash:
+      config.pushHashedUserData.includes("firstName") ?
+        userData.firstNameHash
+      : null,
+    last_name_hash:
+      config.pushHashedUserData.includes("lastName") ?
+        userData.lastNameHash
+      : null,
+    email_hash:
+      config.pushHashedUserData.includes("email") ? userData.emailHash : null,
+    phone_hash:
+      config.pushHashedUserData.includes("phone") ? userData.phoneHash : null,
+    __first_name:
+      config.pushClearUserData.includes("firstName") ?
+        userData.firstName
+      : null,
+    __last_name:
+      config.pushClearUserData.includes("lastName") ? userData.lastName : null,
+    __email: config.pushClearUserData.includes("email") ? userData.email : null,
+    __phone: config.pushClearUserData.includes("phone") ? userData.phone : null,
+    street:
+      config.pushClearUserData.includes("street") ? userData.street : null,
+    city: config.pushClearUserData.includes("city") ? userData.city : null,
+    region:
+      config.pushClearUserData.includes("region") ? userData.region : null,
+    zip: config.pushClearUserData.includes("zip") ? userData.zip : null,
+    country:
+      config.pushClearUserData.includes("country") ? userData.country : null,
+  };
+}
+
 async function updateUserData(checkout) {
   const newEmail = checkout.email?.toLowerCase().trim();
   if (newEmail && newEmail !== userData.email) {
@@ -1047,22 +987,47 @@ async function updateUserData(checkout) {
     userData.emailHash = await sha256(newEmail);
   }
 
-  if (checkout.phone && checkout.phone !== userData.phone) {
-    userData.phone = checkout.phone;
-    userData.phoneHash = await sha256(userData.phone);
+  const newPhone = checkout.phone?.toLowerCase().trim();
+  if (newPhone && newPhone !== userData.phone) {
+    userData.phone = newPhone;
+    userData.phoneHash = await sha256(newPhone);
   }
 
-  const newFirstName = checkout.billingAddress?.firstName?.toLowerCase();
+  const newFirstName = checkout.billingAddress?.firstName?.toLowerCase().trim();
   if (newFirstName && newFirstName !== userData.firstName) {
     userData.firstName = newFirstName;
     userData.firstNameHash = await sha256(newFirstName);
   }
 
-  const newLastName = checkout.billingAddress?.lastName?.toLowerCase();
-
+  const newLastName = checkout.billingAddress?.lastName?.toLowerCase().trim();
   if (newLastName && newLastName !== userData.lastName) {
     userData.lastName = newLastName;
     userData.lastNameHash = await sha256(newLastName);
+  }
+
+  const newStreet = checkout.billingAddress?.address1?.toLowerCase().trim();
+  if (newStreet && newStreet !== userData.street) {
+    userData.street = newStreet;
+  }
+
+  const newCity = checkout.billingAddress?.city?.toLowerCase().trim();
+  if (newCity && newCity !== userData.city) {
+    userData.city = newCity;
+  }
+
+  const newRegion = checkout.billingAddress?.province?.toLowerCase().trim();
+  if (newRegion && newRegion !== userData.region) {
+    userData.region = newRegion;
+  }
+
+  const newZip = checkout.billingAddress?.zip?.toLowerCase().trim();
+  if (newZip && newZip !== userData.zip) {
+    userData.zip = newZip;
+  }
+
+  const newCountry = checkout.billingAddress?.countryCode?.toLowerCase().trim();
+  if (newCountry && newCountry !== userData.country) {
+    userData.country = newCountry;
   }
 }
 
