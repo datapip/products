@@ -15,16 +15,26 @@ const config = {
   websiteDomain: "",
 
   // state the endpoint for your live GTM
-  // container:
-  gtmContainerUrl: "",
+  // container ID (e.g. GTM-ABCD1234):
+  gtmSnippet: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl+ '&gtm_auth=AIx1Q7TX0FU-y5mdVjE_Dg&gtm_preview=env-66&gtm_cookies_win=x';f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-K84QTPLJ');`,
 
   // Optional: state the endpoint for your
-  // development GTM container:
-  gtmDevContainerUrl: "",
+  // development GTM container ID:
+  gtmSnippetDev: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl+ '&gtm_auth=-ohLEOY9C60-YHK7E_4OWA&gtm_preview=env-1&gtm_cookies_win=x';f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-K84QTPLJ');`,
 
   // select consent(s) to load GTM,
-  // leave empty to load instantly:
-  loadGtmOnFollowingConsents: ["preferences", "analytics", "marketing"],
+  // leave empty to load instantly.
+  // Available consent categories:
+  // "preferences", "analytics", "marketing"
+  loadGtmOnFollowingConsents: ["analytics", "marketing"],
 
   // Optional: define if debug info should be
   // logged to console in test environment:
@@ -49,6 +59,7 @@ checkConfig();
 /* ---------------------- Variables ---------------------- */
 const environment = getEnvironment();
 let gtmLoaded = false;
+let pendingEvents = [];
 
 let userData = {
   userId: init?.data?.customer?.id || null,
@@ -483,6 +494,42 @@ analytics?.subscribe?.("checkout_started", (event) => {
 });
 
 analytics?.subscribe?.("checkout_address_info_submitted", async (event) => {
+  const checkout = event?.data?.checkout;
+
+  if (!checkout) {
+    return;
+  }
+
+  await updateUserData(checkout);
+
+  window.dataLayer.push({
+    event: "user_update",
+    user_first_name_hash:
+      config.pushHashedUserData.includes("firstName") ?
+        userData.firstNameHash
+      : null,
+    user_last_name_hash:
+      config.pushHashedUserData.includes("lastName") ?
+        userData.lastNameHash
+      : null,
+    user_email_hash:
+      config.pushHashedUserData.includes("email") ? userData.emailHash : null,
+    user_phone_hash:
+      config.pushHashedUserData.includes("phone") ? userData.phoneHash : null,
+    __user_first_name:
+      config.pushClearUserData.includes("firstName") ?
+        userData.firstName
+      : null,
+    __user_last_name:
+      config.pushClearUserData.includes("lastName") ? userData.lastName : null,
+    __user_email:
+      config.pushClearUserData.includes("email") ? userData.email : null,
+    __user_phone:
+      config.pushClearUserData.includes("phone") ? userData.phone : null,
+  });
+});
+
+analytics?.subscribe?.("checkout_shipping_info_submitted", async (event) => {
   const ga4EventName = "add_shipping_info";
 
   const checkout = event?.data?.checkout;
@@ -498,7 +545,10 @@ analytics?.subscribe?.("checkout_address_info_submitted", async (event) => {
     currency: checkout?.totalPrice?.currencyCode || checkout?.currencyCode,
     value: Number(checkout?.totalPrice?.amount || 0),
     coupon: checkout?.discountApplications?.[0]?.title || "",
-    shipping_tier: checkout?.delivery?.selectedDeliveryOptions?.[0]?.type || "",
+    shipping_tier:
+      checkout?.delivery?.selectedDeliveryOptions?.[0]?.title ||
+      checkout?.delivery?.selectedDeliveryOptions?.[0]?.type ||
+      "",
     items:
       checkout?.lineItems ?
         checkout.lineItems.map((line, index) => ({
@@ -578,7 +628,10 @@ analytics?.subscribe?.("payment_info_submitted", async (event) => {
     currency: checkout?.totalPrice?.currencyCode || checkout?.currencyCode,
     value: Number(checkout?.totalPrice?.amount || 0),
     coupon: checkout?.discountApplications?.[0]?.title || "",
-    payment_type: checkout?.transactions?.[0]?.paymentMethod?.name || "",
+    payment_type:
+      checkout?.transactions?.[0]?.paymentMethod?.name ||
+      checkout?.transactions?.[0]?.paymentMethod?.type ||
+      "",
     items:
       checkout?.lineItems ?
         checkout.lineItems.map((line, index) => ({
@@ -783,9 +836,9 @@ function checkConfig() {
     );
   }
 
-  if (!config.gtmContainerUrl) {
+  if (!config.gtmSnippet) {
     warnings.push(
-      "config.gtmContainerUrl is not set — Google Tag Manager will not load.",
+      "config.gtmSnippet is not set — Google Tag Manager will not load.",
     );
   }
 
@@ -916,29 +969,29 @@ function shouldInitGTM() {
 
 function initializeGTM() {
   const isProd = environment === "production";
-  const gtmSource =
-    config.gtmDevContainerUrl ?
-      isProd ? config.gtmContainerUrl
-      : config.gtmDevContainerUrl
-    : config.gtmContainerUrl;
+  const gtmSnippet =
+    config.gtmSnippetDev ?
+      isProd ? config.gtmSnippet
+      : config.gtmSnippetDev
+    : config.gtmSnippet;
 
-  if (!gtmSource) {
+  if (!gtmSnippet) {
     console.warn(
-      "[debug] GTM container URL is missing - add under 'config.gtmContainerUrl'.",
+      "[debug] GTM snippet is missing - add under 'config.gtmSnippet'.",
     );
     return;
   }
 
-  (function (w, d, s, l) {
-    w[l] = w[l] || [];
-    w[l].push({ "gtm.start": new Date().getTime(), event: "gtm.js" });
-    var f = d.getElementsByTagName(s)[0],
-      j = d.createElement(s);
-    j.async = true;
-    j.src = gtmSource;
-    f?.parentNode?.insertBefore(j, f);
-  })(window, document, "script", "dataLayer");
+  const scriptElement = document.createElement("script");
+  scriptElement.text = gtmSnippet;
+  document.head.appendChild(scriptElement);
+
+  console.log("[debug] GTM snippet injeceted");
+
   gtmLoaded = true;
+
+  pendingEvents.forEach((data) => window.dataLayer.push(data));
+  pendingEvents = [];
 }
 
 function initializeDebugLogs() {
@@ -972,7 +1025,11 @@ function flushEcommerce() {
 }
 
 function pushEvent(data) {
-  window.dataLayer.push(data);
+  if (gtmLoaded) {
+    window.dataLayer.push(data);
+  } else {
+    pendingEvents.push(data);
+  }
 }
 
 function pushError(event, message) {
@@ -984,7 +1041,7 @@ function pushError(event, message) {
 }
 
 async function updateUserData(checkout) {
-  const newEmail = checkout.email?.toLowerCase();
+  const newEmail = checkout.email?.toLowerCase().trim();
   if (newEmail && newEmail !== userData.email) {
     userData.email = newEmail;
     userData.emailHash = await sha256(newEmail);
