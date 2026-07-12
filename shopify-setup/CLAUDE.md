@@ -3,7 +3,7 @@
 ## Projektübersicht
 
 Kommerzielles Plug-and-Play Tracking-Setup für Shopify Stores mit DSGVO-konformer
-Consent-Logik. Verkauft auf Gumroad:
+Consent-Logik. Keine Abhängigkeit zu intransparenten 3rd-Party Apps und volle Kontrolle. Verkauft auf Gumroad:
 https://datapip.gumroad.com
 
 **Zwei Komponenten:**
