@@ -635,14 +635,15 @@ analytics?.subscribe?.("checkout_completed", async (event) => {
 
   await updateUserData(checkout);
 
+  const isNewCustomer = checkout?.order?.customer?.isFirstOrder ?? null;
+  const customerType =
+    checkout?.order?.customer?.isFirstOrder === true ? "new"
+    : checkout?.order?.customer?.isFirstOrder === false ? "returning"
+    : null;
+
   const ga4EcommerceObject = {
     currency: checkout?.totalPrice?.currencyCode || checkout?.currencyCode,
     value: Number(checkout?.totalPrice?.amount || 0),
-    new_customer: checkout?.order?.customer?.isFirstOrder ?? null,
-    customer_type:
-      checkout?.order?.customer?.isFirstOrder === true ? "new"
-      : checkout?.order?.customer?.isFirstOrder === false ? "returning"
-      : null,
     transaction_id: checkout?.order?.id || checkout?.token,
     coupon: checkout?.discountApplications?.[0]?.title || "",
     shipping: Number(checkout?.shippingLine?.price?.amount || 0),
@@ -683,6 +684,8 @@ analytics?.subscribe?.("checkout_completed", async (event) => {
     flushEcommerce();
     pushEvent({
       event: ga4EventName,
+      new_customer: isNewCustomer,
+      customer_type: customerType,
       ecommerce: ga4EcommerceObject,
       user: userDataObject,
     });

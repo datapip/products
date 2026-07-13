@@ -1,6 +1,6 @@
 {
     "exportFormatVersion": 2,
-    "exportTime": "2026-07-12 15:31:52",
+    "exportTime": "2026-07-13 15:41:45",
     "containerVersion": {
         "path": "accounts/148351407/containers/257379523/versions/0",
         "accountId": "148351407",
@@ -386,14 +386,24 @@
                 "type": "awct",
                 "parameter": [
                     {
+                        "type": "TEMPLATE",
+                        "key": "productReportingDataSource",
+                        "value": "DATA_LAYER"
+                    },
+                    {
                         "type": "BOOLEAN",
                         "key": "enableNewCustomerReporting",
-                        "value": "false"
+                        "value": "true"
                     },
                     {
                         "type": "BOOLEAN",
                         "key": "enableConversionLinker",
                         "value": "true"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "newCustomerReportingDataSource",
+                        "value": "DATA_LAYER"
                     },
                     {
                         "type": "TEMPLATE",
@@ -403,7 +413,7 @@
                     {
                         "type": "BOOLEAN",
                         "key": "enableProductReporting",
-                        "value": "false"
+                        "value": "true"
                     },
                     {
                         "type": "TEMPLATE",
@@ -436,7 +446,7 @@
                         "value": "false"
                     }
                 ],
-                "fingerprint": "1783857417238",
+                "fingerprint": "1783918588707",
                 "firingTriggerId": [
                     "38"
                 ],
@@ -473,8 +483,8 @@
             {
                 "accountId": "148351407",
                 "containerId": "257379523",
-                "tagId": "82",
-                "name": "GAds User Data",
+                "tagId": "97",
+                "name": "GAds User Data (Unpause, if allowed)",
                 "type": "awud",
                 "parameter": [
                     {
@@ -493,7 +503,7 @@
                         "value": "{{GAds Account ID}}"
                     }
                 ],
-                "fingerprint": "1783858434171",
+                "fingerprint": "1783957277121",
                 "firingTriggerId": [
                     "84"
                 ],
@@ -501,6 +511,7 @@
                     "35"
                 ],
                 "tagFiringOption": "ONCE_PER_EVENT",
+                "paused": true,
                 "monitoringMetadata": {
                     "type": "MAP"
                 },
@@ -793,11 +804,11 @@
                 "accountId": "148351407",
                 "containerId": "257379523",
                 "triggerId": "84",
-                "name": "User Data Events",
+                "name": "add_shipping_info",
                 "type": "CUSTOM_EVENT",
                 "customEventFilter": [
                     {
-                        "type": "MATCH_REGEX",
+                        "type": "EQUALS",
                         "parameter": [
                             {
                                 "type": "TEMPLATE",
@@ -807,12 +818,12 @@
                             {
                                 "type": "TEMPLATE",
                                 "key": "arg1",
-                                "value": "user_update|add_shipping_info|add_payment_info|purchase"
+                                "value": "add_shipping_info"
                             }
                         ]
                     }
                 ],
-                "fingerprint": "1783858411248"
+                "fingerprint": "1783919254076"
             }
         ],
         "variable": [
@@ -931,26 +942,11 @@
                                         "value": "false"
                                     }
                                 ]
-                            },
-                            {
-                                "type": "MAP",
-                                "map": [
-                                    {
-                                        "type": "TEMPLATE",
-                                        "key": "parameter",
-                                        "value": "page_location"
-                                    },
-                                    {
-                                        "type": "TEMPLATE",
-                                        "key": "parameterValue",
-                                        "value": "{{page_location}}"
-                                    }
-                                ]
                             }
                         ]
                     }
                 ],
-                "fingerprint": "1783864655580"
+                "fingerprint": "1783955905162"
             },
             {
                 "accountId": "148351407",
@@ -1212,11 +1208,26 @@
                                         "value": "{{user.id}}"
                                     }
                                 ]
+                            },
+                            {
+                                "type": "MAP",
+                                "map": [
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameter",
+                                        "value": "customer_type"
+                                    },
+                                    {
+                                        "type": "TEMPLATE",
+                                        "key": "parameterValue",
+                                        "value": "{{customer_type}}"
+                                    }
+                                ]
                             }
                         ]
                     }
                 ],
-                "fingerprint": "1783198670265"
+                "fingerprint": "1783955878518"
             },
             {
                 "accountId": "148351407",
@@ -1707,7 +1718,7 @@
                         "value": "{{GAds User Data Code}}"
                     }
                 ],
-                "fingerprint": "1783860424995",
+                "fingerprint": "1783919867549",
                 "formatValue": {}
             },
             {
@@ -1938,6 +1949,34 @@
                     }
                 ],
                 "fingerprint": "1783864550891"
+            },
+            {
+                "accountId": "148351407",
+                "containerId": "257379523",
+                "variableId": "96",
+                "name": "customer_type",
+                "type": "v",
+                "parameter": [
+                    {
+                        "type": "INTEGER",
+                        "key": "dataLayerVersion",
+                        "value": "2"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "setDefaultValue",
+                        "value": "false"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "name",
+                        "value": "customer_type"
+                    }
+                ],
+                "fingerprint": "1783955837350",
+                "formatValue": {
+                    "caseConversionType": "LOWERCASE"
+                }
             }
         ],
         "builtInVariable": [
@@ -1978,7 +2017,7 @@
                 "name": "Environment Name"
             }
         ],
-        "fingerprint": "1783870311989",
+        "fingerprint": "1783957305178",
         "tagManagerUrl": "https://tagmanager.google.com/#/versions/accounts/148351407/containers/257379523/versions/0?apiLink=version"
     }
 }

@@ -84,19 +84,19 @@ window.dataLayer.push({
 
 ## Event-Mapping: Shopify → GA4
 
-| Shopify Event                     | GA4 Event           | Pflichtfelder                                                       |
-| --------------------------------- | ------------------- | ------------------------------------------------------------------- |
-| `page_viewed`                     | `page_view`         | `page_location`, `page_title`                                       |
-| `collection_viewed`               | `view_item_list`    | `item_list_id`, `item_list_name`, `items[]`                         |
-| `product_viewed`                  | `view_item`         | `currency`, `value`, `items[]`                                      |
-| `product_added_to_cart`           | `add_to_cart`       | `currency`, `value`, `items[]`                                      |
-| `product_removed_from_cart`       | `remove_from_cart`  | `currency`, `value`, `items[]`                                      |
-| `cart_viewed`                     | `view_cart`         | `currency`, `value`, `items[]`                                      |
-| `checkout_started`                | `begin_checkout`    | `currency`, `value`, `items[]`, `coupon`                            |
-| `checkout_address_info_submitted` | `add_shipping_info` | `currency`, `value`, `items[]`, `shipping_tier`                     |
-| `payment_info_submitted`          | `add_payment_info`  | `currency`, `value`, `items[]`, `payment_type`                      |
-| `checkout_completed`              | `purchase`          | `transaction_id`, `currency`, `value`, `tax`, `shipping`, `items[]` |
-| `search_submitted`                | `search`            | `search_term`                                                       |
+| Shopify Event                      | GA4 Event           | Pflichtfelder                                                       |
+| ---------------------------------- | ------------------- | ------------------------------------------------------------------- |
+| `page_viewed`                      | `page_view`         | `page_location`, `page_title`                                       |
+| `collection_viewed`                | `view_item_list`    | `item_list_id`, `item_list_name`, `items[]`                         |
+| `product_viewed`                   | `view_item`         | `currency`, `value`, `items[]`                                      |
+| `product_added_to_cart`            | `add_to_cart`       | `currency`, `value`, `items[]`                                      |
+| `product_removed_from_cart`        | `remove_from_cart`  | `currency`, `value`, `items[]`                                      |
+| `cart_viewed`                      | `view_cart`         | `currency`, `value`, `items[]`                                      |
+| `checkout_started`                 | `begin_checkout`    | `currency`, `value`, `items[]`, `coupon`                            |
+| `checkout_shipping_info_submitted` | `add_shipping_info` | `currency`, `value`, `items[]`, `shipping_tier`                     |
+| `payment_info_submitted`           | `add_payment_info`  | `currency`, `value`, `items[]`, `payment_type`                      |
+| `checkout_completed`               | `purchase`          | `transaction_id`, `currency`, `value`, `tax`, `shipping`, `items[]` |
+| `search_submitted`                 | `search`            | `search_term`                                                       |
 
 ### Item-Objekt (GA4 Standard)
 
