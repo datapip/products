@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rm -f \"d:/Development/products/.playwright-mcp\"/*.log \"d:/Development/products/.playwright-mcp\"/*.yml; echo done)",
+      "Edit(/.claude/skills/test-purchase-flow/**)"
+    ],
+    "additionalDirectories": [
+      "d:\\Development\\products\\.playwright-mcp"
+    ]
+  }
+}

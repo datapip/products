@@ -493,7 +493,7 @@ analytics?.subscribe?.("checkout_address_info_submitted", async (event) => {
   await updateUserData(checkout);
   const userDataObject = getUserData();
 
-  window.dataLayer.push({
+  pushEvent({
     event: "user_update",
     user: userDataObject,
   });

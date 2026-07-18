@@ -65,6 +65,20 @@ Der Code läuft in einem **isolierten Browser-iframe** mit stark eingeschränkte
 - GTM Container ID kommt aus `config`-Objekt
 - Events, die vor GTM-Load eintreffen, werden in `pendingEvents[]` gepuffert
   und nach GTM-Load geflusht
+- **Warum `pendingEvents[]` statt direktem `window.dataLayer.push()`**: Auf normalen Webseiten
+  spielt gtm.js beim Laden das komplette bestehende `dataLayer`-Array nach — Events, die vor dem
+  Laden gepusht wurden, gehen dort nicht verloren. In der Shopify Pixel-Sandbox wurde das
+  getestet und **funktioniert nicht zuverlässig**: Events, die direkt vor GTM-Load per
+  `window.dataLayer.push()` gepusht wurden, kamen nie in GTM an. Deshalb müssen alle Events, die
+  zuverlässig ankommen sollen, über `pushEvent()` laufen (das bei `gtmLoaded === false` manuell
+  puffert), nicht direkt über `window.dataLayer.push()`.
+  ⚠️ Die `gtag("consent", ...)`-Aufrufe (Consent Default/Update, vor GTM-Load) nutzen aktuell
+  weiterhin den direkten Push-Pfad (`window.gtag` → `window.dataLayer.push(arguments)`), NICHT
+  `pushEvent()`. Falls das gleiche Verlust-Verhalten dort zutrifft, käme der initiale Consent-Status
+  nie bei GTM an. Vor Release verifizieren, ob Consent-Updates zuverlässig ankommen — insbesondere
+  nachdem `gtm_auth`/`gtm_preview` aus dem Snippet entfernt wurden (siehe Pre-Release Checklist),
+  da das Preview/Debug-Verhalten von gtm.js sich vom Live-Container unterscheiden kann und die
+  ursprüngliche Beobachtung ggf. damit zusammenhing statt mit der Sandbox selbst.
 
 ### dataLayer-Struktur
 
@@ -123,7 +137,9 @@ gehasht bevor sie in den dataLayer gepusht werden:
 
 - **E-Mail**: SHA-256, lowercase, trimmed → `user_data.email_address` (als Array)
 - **Telefon**: SHA-256, E.164-Format normalisiert → `user_data.phone_number` (als Array)
-- **Vorname / Nachname**: Lowercase, trimmed → `user_data.first_name` / `user_data.last_name` (unhashed, Google empfiehlt das für Enhanced Conversions)
+- **Vorname / Nachname**: Lowercase, trimmed, SHA-256 gehasht → `first_name_hash` / `last_name_hash`
+  im dataLayer, gemappt auf `sha256_first_name` / `sha256_last_name` im GTM Enhanced-Conversions-Payload
+  (Google Ads erwartet diese Felder gehasht, nicht im Klartext — ältere Version dieser Doku war hier falsch)
 
 Hash-Implementierung: `crypto.subtle` ist in der Shopify Pixel-Sandbox verfügbar und wird direkt genutzt.
 
@@ -141,6 +157,7 @@ Hash-Implementierung: `crypto.subtle` ist in der Shopify Pixel-Sandbox verfügba
 | GA4 Search             | GA4 Event              | search Event                   |
 | Google Ads Conversion  | Google Ads             | purchase Event                 |
 | Google Ads Remarketing | Google Ads Remarketing | All Pages                      |
+| Google Ads User Data (Enhanced Conversions) | Google Ads | add_shipping_info / add_payment_info / purchase — **paused** seit 2026-07-13 |
 | Consent Mode Default   | Consent Initialization | Consent Initialization Trigger |
 
 ### Variablen (DLV = dataLayer Variable)
@@ -294,6 +311,9 @@ Single-company license. Redistribution prohibited.
 - **Consent-API-Timing**: `customerPrivacy` ist nur im `init`-Event verfügbar —
   danach nur noch über `subscribe`-Callbacks. Pixel muss consent state intern cachen.
 - **SHA-256**: `crypto.subtle` ist verfügbar und wird direkt genutzt — keine Inline-Implementierung nötig
+- **Google Ads User Data Tag pausiert**: Das "Google Ads User Data" (Enhanced Conversions) Tag ist seit 2026-07-13
+  in GTM pausiert. `/test-purchase-flow`-Läufe prüfen den `ccm/s/collect`-Request-Body deshalb nicht mehr —
+  erst wieder aktivieren, wenn der Tag reaktiviert wird.
 
 ---
 
