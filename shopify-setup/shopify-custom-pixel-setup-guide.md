@@ -53,8 +53,8 @@ Save each variable after editing.
    | Setting | What to enter |
    | --- | --- |
    | `websiteDomain` | Your live storefront domain, e.g. `"shop.example.com"` or `"example.com"`. Used to detect production vs. testing. |
-   | `gtmSnippet` | Your **live** GTM container snippet from **Admin → Install Google Tag Manager** in GTM. Use the standard snippet — do **not** include `gtm_auth` / `gtm_preview` parameters here, those are for preview mode only. |
-   | `gtmSnippetDev` | *(Optional)* A snippet pointing to a preview/test environment, used automatically when the pixel is in development mode. |
+   | `gtmSnippet` | Your **live** GTM container snippet from **Admin → Install Google Tag Manager** in GTM. Copy the code between the `<script>` tags and paste it in here. |
+   | `gtmSnippetDev` | *(Optional)* A snippet pointing to a preview/test environment, used automatically when the pixel is in development mode. Copy the code between the `<script>` tags the same way. |
    | `loadGtmOnFollowingConsents` | Which consent categories must be granted before GTM loads: any of `"preferences"`, `"analytics"`, `"marketing"`. Leave the array empty (`[]`) to load GTM immediately regardless of consent. |
    | `enableLogsInDev` / `enableLogsInProd` | Set to `true` to log every dataLayer push to the browser console — useful while testing, recommended `false` in `enableLogsInProd` once live. |
    | `pushHashedUserData` | Which customer fields to push as SHA-256 hashes (for Enhanced Conversions / GA4 user data): any of `"firstName"`, `"lastName"`, `"email"`, `"phone"`. |

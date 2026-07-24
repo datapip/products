@@ -1,8 +1,8 @@
 ## PRODUCT PAGE
 
-A **Shopify Custom Pixel + Google Tag Manager (GTM) Web Container** for GDPR-ready **GA4 and Google Ads** e-commerce tracking — an alternative to a monthly tracking-app subscription, built on a data layer you inspect and control yourself.
+A **Shopify Custom Pixel + Google Tag Manager (GTM) Web Container** for GDPR-ready **GA4 and Google Ads** tracking — full setup and full control, with no monthly tracking-app subscription and no black box: you own the data layer.
 
-Rather than routing your entire event stream through a closed third-party app, this template runs through Shopify's own **Customer Events / Custom Pixel** sandbox and a GTM container you own and can read line by line. Setup follows five clear steps — import the container, drop in your own GA4/Ads IDs, add the pixel to Shopify, confirm consent is wired up, test — and once it's running, it's yours: no black-box app logic to work around, and a solid base you can extend with your own events, tags, or destinations as your tracking setup grows.
+Rather than routing your entire event stream through a closed third-party app, this template runs through Shopify's own **Custom Pixel** sandbox using its analytics API, and a GTM container you own and can read line by line. Setup follows five clear steps — import the container, drop in your own GA4/Ads IDs, add the pixel to Shopify, confirm consent is wired up, test — and once it's running, it's yours: no black-box app logic to work around, and a solid base you can extend with your own events, tags, or destinations as your tracking setup grows.
 
 **Early Bird Offer:** [Optional — add a limited-time discount code here, e.g. "First 5 buyers get €X off, code LAUNCH_X at checkout."]
 
@@ -31,7 +31,7 @@ This is a **one-time purchase** of the current development state ("as is"). You 
 - A Shopify store with access to **Customer Events / Custom Pixels** (available on current Shopify plans).
 - A **Google Tag Manager** account with a Web Container.
 - A **GA4** property and Measurement ID.
-- *(Optional)* A **Google Ads** account with a Purchase conversion action, if you want conversion tracking / remarketing.
+- _(Optional)_ A **Google Ads** account with a Purchase conversion action, if you want conversion tracking / remarketing.
 
 ### Legal Notice, License & Liability Disclaimer
 
@@ -83,7 +83,7 @@ Make sure Shopify's native **Customer Privacy** settings (or a compatible CMP) a
 
 Use GTM's **Preview** mode together with a live test checkout to confirm every event (`page_view`, `view_item`, `add_to_cart`, `begin_checkout`, `purchase`, etc.) fires with the correct data before publishing your workspace.
 
-*(Full details, screenshots, and troubleshooting notes are in the attached PDF Setup Guide.)*
+_(Full details, screenshots, and troubleshooting notes are in the attached PDF Setup Guide.)_
 
 ### License, Support & Conditions
 
