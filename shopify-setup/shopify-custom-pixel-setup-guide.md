@@ -47,8 +47,11 @@ Save each variable after editing.
 
 1. In your Shopify Admin, go to **Settings → Customer events**.
 2. Click **Add custom pixel**, give it a name (e.g. "GA4 & Google Ads Tracking"), and click **Add pixel**.
-3. Delete the placeholder code and paste in the full contents of **`shopify-custom-pixel.js`**.
-4. Edit the `config` object at the top of the file:
+3. Under **Customer privacy**, set:
+   - **Permission → Not required** ("The pixel will always run.") — this is required for the template to work as documented. The pixel's own internal logic (the `loadGtmOnFollowingConsents` setting below, plus Shopify's Customer Privacy API) decides whether GTM loads for a given visitor; if you set this to **Required** instead, Shopify will stop the pixel from running at all for non-consenting visitors, so it would never get the chance to check consent state or react to it.
+   - **Data sale → Data collected does not qualify as data sale** ("The pixel will collect data when the customers opts out of their data being sold.") — the default this template ships with. Whether this classification is correct for your store is a legal determination under applicable data-sale/sharing laws (e.g. US state privacy laws) — confirm it matches your own situation before publishing; it's outside the scope of this template.
+4. Delete the placeholder code and paste in the full contents of **`shopify-custom-pixel.js`**.
+5. Edit the `config` object at the top of the file:
 
    | Setting | What to enter |
    | --- | --- |
@@ -60,8 +63,8 @@ Save each variable after editing.
    | `pushHashedUserData` | Which customer fields to push as SHA-256 hashes (for Enhanced Conversions / GA4 user data): any of `"firstName"`, `"lastName"`, `"email"`, `"phone"`. |
    | `pushClearUserData` | Which fields to push in clear text (never email/phone/name): any of `"street"`, `"city"`, `"region"`, `"zip"`, `"country"`. |
 
-5. Click **Save**, then set the pixel's status to **Connected**.
-6. **Grant data access:** because this pixel reads checkout and customer data (email, phone, billing address) to power Enhanced Conversions, Shopify will prompt you to grant additional permissions the first time you save it. Under the pixel's **Permissions** tab, approve access to customer and checkout data — without this, the checkout-related fields will arrive as empty/`null`.
+6. Click **Save**, then set the pixel's status to **Connected**.
+7. **Grant data access:** because this pixel reads checkout and customer data (email, phone, billing address) to power Enhanced Conversions, Shopify will prompt you to grant additional permissions the first time you save it. Under the pixel's **Permissions** tab, approve access to customer and checkout data — without this, the checkout-related fields will arrive as empty/`null`.
 
 ---
 
