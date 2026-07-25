@@ -41,7 +41,9 @@ dann auf das Produkt-File portieren (mit Entfernung von Client-spezifischem Code
 
 1. Logik in `shopify-custom-pixel.js` entwickeln (orientiert an Referenz-Implementierung)
 2. Produkt-agnostische Version sicherstellen: keine festen Domains, keine Client-IDs,
-   alle Config-Werte über die Pixel-Settings (`pixel.settings.*`)
+   alle Config-Werte über das `const config = {...}`-Objekt am Dateianfang, das der Käufer direkt
+   im Pixel-Code editiert (**nicht** über Shopifys native Pixel-Settings-UI/`pixel.settings.*` —
+   ältere Version dieser Doku war hier falsch, im Code kommt `settings` nirgends vor)
 3. GTM Container in GTM UI pflegen, dann als `gtm-container.json` exportieren
 4. Manuelle End-to-End-Tests im Shopify Development Store (Pixel Sandbox)
 5. Setup-Anleitung in `.docx` aktualisieren → PDF exportieren
@@ -56,7 +58,7 @@ Der Code läuft in einem **isolierten Browser-iframe** mit stark eingeschränkte
 
 - Kein `document`, `window`, `localStorage` auf Parent-Webseite
 - Kein direkter DOM-Zugriff auf Parent-Webseite
-- Verfügbare APIs: `analytics.subscribe()`, `sessionStorage` (direkt, kein `browser.*` Wrapper nötig), `pixel.settings.*`, `init` event für Customer Privacy, `crypto.subtle` (verfügbar)
+- Verfügbare APIs: `analytics.subscribe()`, `sessionStorage` (direkt, kein `browser.*` Wrapper nötig), `api.customerPrivacy.subscribe()`, `init` (Objekt mit initialem Customer-Privacy-/Kundenstatus, im globalen Scope verfügbar), `crypto.subtle` (verfügbar). **Kein** `pixel.settings` — Konfiguration läuft über das `config`-Objekt im Code (siehe "Entwicklungs-Workflow").
 
 ### GTM Loading
 
@@ -72,45 +74,55 @@ Der Code läuft in einem **isolierten Browser-iframe** mit stark eingeschränkte
   `window.dataLayer.push()` gepusht wurden, kamen nie in GTM an. Deshalb müssen alle Events, die
   zuverlässig ankommen sollen, über `pushEvent()` laufen (das bei `gtmLoaded === false` manuell
   puffert), nicht direkt über `window.dataLayer.push()`.
-  ⚠️ Die `gtag("consent", ...)`-Aufrufe (Consent Default/Update, vor GTM-Load) nutzen aktuell
-  weiterhin den direkten Push-Pfad (`window.gtag` → `window.dataLayer.push(arguments)`), NICHT
-  `pushEvent()`. Falls das gleiche Verlust-Verhalten dort zutrifft, käme der initiale Consent-Status
-  nie bei GTM an. Vor Release verifizieren, ob Consent-Updates zuverlässig ankommen — insbesondere
-  nachdem `gtm_auth`/`gtm_preview` aus dem Snippet entfernt wurden (siehe Pre-Release Checklist),
-  da das Preview/Debug-Verhalten von gtm.js sich vom Live-Container unterscheiden kann und die
-  ursprüngliche Beobachtung ggf. damit zusammenhing statt mit der Sandbox selbst.
+  Die `gtag("consent", ...)`-Aufrufe (Consent Default/Update, vor GTM-Load) nutzen weiterhin den
+  direkten Push-Pfad (`window.gtag` → `window.dataLayer.push(arguments)`), NICHT `pushEvent()`.
+  **Verifiziert** (`/test-purchase-flow`-Läufe vom 2026-07-25, dev-store): in beiden Läufen wurde
+  Consent granted, *bevor* GTM lud, und trotzdem kamen alle nachfolgenden GA4/Ads-Requests mit
+  `gcs=G111` (granted) an — das befürchtete Verlust-Verhalten trat hier nicht ein. Kein offener
+  Pre-Release-Blocker mehr, aber bei zukünftigen Auffälligkeiten hier zuerst nachschauen.
 
 ### dataLayer-Struktur
 
-Jedes Event wird als Standard GA4-Event gepusht:
+Jedes Event wird als Standard GA4-Event gepusht. **Alle Felder liegen flach im Event-Objekt** —
+es gibt keinen `page_data`- oder `user_data`-Wrapper (ältere Version dieser Doku war hier falsch):
 
 ```js
 window.dataLayer.push({ ecommerce: null }); // flush vorheriges ecommerce Objekt
 window.dataLayer.push({
   event: 'purchase',            // GA4 Event Name
   ecommerce: { ... },           // GA4 Ecommerce Objekt
-  user_data: { ... },           // Hashed user data für Ads
-  page_data: { ... },           // Page metadata
+  user: { ... },                // Gehashte + Klartext User-Daten — Key heißt `user`, nicht `user_data`
+  new_customer: true,           // nur bei purchase
+  customer_type: 'new',         // nur bei purchase
 });
 ```
+
+Nicht-Ecommerce-Events (z. B. `page_view`) pushen ihre Metadaten ebenfalls flach auf Top-Level
+(`page_location`, `page_title`, `page_referrer`, `page_hash`, `page_search`, `environment`),
+nicht unter einem gemeinsamen Objekt.
 
 ---
 
 ## Event-Mapping: Shopify → GA4
 
-| Shopify Event                      | GA4 Event           | Pflichtfelder                                                       |
-| ---------------------------------- | ------------------- | ------------------------------------------------------------------- |
-| `page_viewed`                      | `page_view`         | `page_location`, `page_title`                                       |
-| `collection_viewed`                | `view_item_list`    | `item_list_id`, `item_list_name`, `items[]`                         |
-| `product_viewed`                   | `view_item`         | `currency`, `value`, `items[]`                                      |
-| `product_added_to_cart`            | `add_to_cart`       | `currency`, `value`, `items[]`                                      |
-| `product_removed_from_cart`        | `remove_from_cart`  | `currency`, `value`, `items[]`                                      |
-| `cart_viewed`                      | `view_cart`         | `currency`, `value`, `items[]`                                      |
-| `checkout_started`                 | `begin_checkout`    | `currency`, `value`, `items[]`, `coupon`                            |
-| `checkout_shipping_info_submitted` | `add_shipping_info` | `currency`, `value`, `items[]`, `shipping_tier`                     |
-| `payment_info_submitted`           | `add_payment_info`  | `currency`, `value`, `items[]`, `payment_type`                      |
-| `checkout_completed`               | `purchase`          | `transaction_id`, `currency`, `value`, `tax`, `shipping`, `items[]` |
-| `search_submitted`                 | `search`            | `search_term`                                                       |
+"Pflichtfelder" = tatsächlich in `EVENT_REQUIRED_PARAMS` validiert (fehlt eines davon, wird das
+Event nicht gepusht, sondern stattdessen `datalayer_error`). Weitere Felder wie `coupon`, `tax`,
+`shipping`, `item_list_id`/`item_list_name`, `page_title` werden zwar immer mitgeschickt, aber
+nicht validiert — ältere Version dieser Doku listete sie fälschlich als Pflichtfelder.
+
+| Shopify Event                      | GA4 Event           | Pflichtfelder (validiert)                        |
+| ----------------------------------- | ------------------- | -------------------------------------------------- |
+| `page_viewed`                      | `page_view`         | `page_location`                                    |
+| `collection_viewed`                | `view_item_list`    | `items[]`                                          |
+| `product_viewed`                   | `view_item`         | `currency`, `value`, `items[]`                     |
+| `product_added_to_cart`            | `add_to_cart`       | `currency`, `value`, `items[]`                     |
+| `product_removed_from_cart`        | `remove_from_cart`  | `currency`, `value`, `items[]`                     |
+| `cart_viewed`                      | `view_cart`         | `currency`, `value`                                |
+| `checkout_started`                 | `begin_checkout`    | `currency`, `value`, `items[]`                     |
+| `checkout_shipping_info_submitted` | `add_shipping_info` | `currency`, `value`, `shipping_tier`, `items[]`    |
+| `payment_info_submitted`           | `add_payment_info`  | `currency`, `value`, `payment_type`, `items[]`     |
+| `checkout_completed`               | `purchase`          | `currency`, `value`, `transaction_id`, `items[]`   |
+| `search_submitted`                 | `search`            | `search_term`                                      |
 
 ### Item-Objekt (GA4 Standard)
 
@@ -135,11 +147,15 @@ window.dataLayer.push({
 Für Enhanced Conversions (Google Ads) und GA4 User Properties werden PII-Daten
 gehasht bevor sie in den dataLayer gepusht werden:
 
-- **E-Mail**: SHA-256, lowercase, trimmed → `user_data.email_address` (als Array)
-- **Telefon**: SHA-256, E.164-Format normalisiert → `user_data.phone_number` (als Array)
-- **Vorname / Nachname**: Lowercase, trimmed, SHA-256 gehasht → `first_name_hash` / `last_name_hash`
+Alle vier Felder landen flach unter `user.*_hash` im dataLayer (nicht `user_data.*`, kein
+Array-Wrapper — ältere Version dieser Doku war hier falsch) und werden von der GTM Custom-JS-Variable
+`cjs - GAds User-Provided Data Code` auf die von Google Ads erwarteten Feldnamen gemappt:
+
+- **E-Mail**: SHA-256, lowercase, trimmed → `user.email_hash` im dataLayer → `sha256_email_address` im Enhanced-Conversions-Payload
+- **Telefon**: SHA-256, lowercase, trimmed (**keine** E.164-Normalisierung — ältere Version dieser Doku war hier falsch) → `user.phone_hash` → `sha256_phone_number`
+- **Vorname / Nachname**: Lowercase, trimmed, SHA-256 gehasht → `user.first_name_hash` / `user.last_name_hash`
   im dataLayer, gemappt auf `sha256_first_name` / `sha256_last_name` im GTM Enhanced-Conversions-Payload
-  (Google Ads erwartet diese Felder gehasht, nicht im Klartext — ältere Version dieser Doku war hier falsch)
+  (Google Ads erwartet diese Felder gehasht, nicht im Klartext)
 
 Hash-Implementierung: `crypto.subtle` ist in der Shopify Pixel-Sandbox verfügbar und wird direkt genutzt.
 
@@ -149,47 +165,70 @@ Hash-Implementierung: `crypto.subtle` ist in der Shopify Pixel-Sandbox verfügba
 
 ### Tags
 
-| Tag                    | Typ                    | Trigger                        |
-| ---------------------- | ---------------------- | ------------------------------ |
-| GA4 Configuration      | GA4 Config             | All Pages (consent-aware)      |
-| GA4 Ecommerce Events   | GA4 Event              | Ecommerce Events Trigger       |
-| GA4 Page View          | GA4 Event              | Page View Trigger              |
-| GA4 Search             | GA4 Event              | search Event                   |
-| Google Ads Conversion  | Google Ads             | purchase Event                 |
-| Google Ads Remarketing | Google Ads Remarketing | All Pages                      |
-| Google Ads User Data (Enhanced Conversions) | Google Ads | add_shipping_info / add_payment_info / purchase — **paused** seit 2026-07-13 |
-| Consent Mode Default   | Consent Initialization | Consent Initialization Trigger |
+Es gibt **keinen** eigenen GTM-Tag für Consent-Defaults — die werden direkt im Pixel per
+`gtag("consent", "default", ...)` gesetzt, bevor GTM überhaupt lädt (siehe "Consent Mode v2"
+unten). Eine ältere Version dieser Doku listete dafür fälschlich einen "Consent Mode Default"-Tag.
+
+| Tag                                          | Typ                       | Trigger                                                                    |
+| --------------------------------------------- | -------------------------- | --------------------------------------------------------------------------- |
+| GA4 - Configuration                          | GA4 Config                | All Pages (implizit, kein `firingTriggerId` gesetzt)                       |
+| GAds - Configuration                         | Google Ads Config         | All Pages (implizit)                                                       |
+| GA4 - Event - Page View                      | GA4 Event                 | `ce - page_view`                                                          |
+| GA4 - Event - Ecommerce                      | GA4 Event                 | `ce - Ecommerce Events`                                                   |
+| GA4 - Event - Search                         | GA4 Event                 | `ce - search`                                                             |
+| GAds - Event - Conversion                    | Google Ads Conversion (`awct`) | `ce - purchase`, blockiert durch `ce - No Marketing Consent`         |
+| GAds - Remarketing                           | Google Ads Remarketing (`sp`) | `ce - page_view`, blockiert durch `ce - No Marketing Consent`         |
+| GAds - Event - User Data (unpause, if allowed) | Enhanced Conversions (`awud`) | `ce - add_shipping_info`, blockiert durch `ce - No Marketing Consent` — **paused** seit 2026-07-13 |
 
 ### Variablen (DLV = dataLayer Variable)
 
-| Variable              | Typ      | dataLayer-Key                     |
-| --------------------- | -------- | --------------------------------- |
-| DLV - Ecommerce       | DLV      | `ecommerce`                       |
-| DLV - Event           | DLV      | `event`                           |
-| DLV - Page Location   | DLV      | `page_data.page_location`         |
-| DLV - Page Title      | DLV      | `page_data.page_title`            |
-| DLV - Page Type       | DLV      | `page_data.page_type`             |
-| DLV - User ID         | DLV      | `page_data.user_id`               |
-| DLV - User Data       | DLV      | `user_data`                       |
-| DLV - Shop Country    | DLV      | `page_data.shop_country`          |
-| GA4 Measurement ID    | Constant | `G-XXXXXXXXXX` (Käufer trägt ein) |
-| GAds Conversion ID    | Constant | `AW-XXXXXXXXX` (Käufer trägt ein) |
-| GAds Conversion Label | Constant | (Käufer trägt ein)                |
+Alle DLV-Variablen lesen **flach** aus dem dataLayer — kein `page_data`/`user_data`-Wrapper
+(siehe "dataLayer-Struktur" oben). Auszug (vollständige Liste: `gtm-container.json`):
+
+| Variable                                                              | dataLayer-Key                                             |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `dlv - ecommerce`, `dlv - ecommerce.value/.currency/.transaction_id`  | `ecommerce`, `ecommerce.value`, `.currency`, `.transaction_id` |
+| `dlv - page_location/page_title/page_referrer/page_hash/page_search` | `page_location`, `page_title`, … (flach, Top-Level)          |
+| `dlv - user.id/.orders_count/.email_hash/.phone_hash/.first_name_hash/.last_name_hash` | `user.*` — Pixel pusht als `user: {...}`, nicht `user_data` |
+| `dlv - user.street/.city/.region/.zip/.country`                      | `user.*` — Klartext-Adresse für Enhanced Conversions          |
+| `dlv - user.__email/__first_name/__last_name/__phone`                | `user.__*` — Klartext, optional über `pushClearUserData`      |
+| `dlv - consent_preferences/consent_analytics/consent_marketing`      | `consent_*`                                                  |
+| `dlv - customer_type/search_term/environment`                        | wie benannt                                                   |
+| `url - gclid`                                                        | Query-Parameter aus `page_location`                           |
+
+**Plattform-IDs** (`lookup - GA4 Measurement ID`, `lookup - GAds Account ID`,
+`lookup - GAds Conversion Label`) sind **Simple-Table-Lookup**-Variablen, keine Constants — sie
+wählen anhand von `dlv - environment` (`development`/`production`) den passenden Wert. Käufer
+trägt beide Zeilen ein.
+
+**Config-Variablen**: `config - GA4 Configuration Settings`, `config - GA4 Event Settings`,
+`config - GAds Configuration Settings`, `config - GAds User-Provided Data` (nutzt
+`cjs - GAds User-Provided Data Code`, ein Custom-JS-Variable das das Enhanced-Conversions-Payload
+aus den `dlv - user.*`-Variablen baut).
 
 ### Triggers
 
-| Trigger                | Typ                    | Bedingung                                                                                                                                            |
-| ---------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| All Pages              | Page View              | —                                                                                                                                                    |
-| Ecommerce Events       | Custom Event           | `view_item`, `add_to_cart`, `remove_from_cart`, `view_cart`, `begin_checkout`, `add_shipping_info`, `add_payment_info`, `purchase`, `view_item_list` |
-| Page View Event        | Custom Event           | `page_view`                                                                                                                                          |
-| Purchase Event         | Custom Event           | `purchase`                                                                                                                                           |
-| Search Event           | Custom Event           | `search`                                                                                                                                             |
-| Consent Initialization | Consent Initialization | —                                                                                                                                                    |
+| Trigger                  | Typ                      | Bedingung                                                                                                                                            |
+| -------------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ce - page_view`          | Custom Event               | `event == page_view`                                                                                                                                |
+| `ce - Ecommerce Events`   | Custom Event               | `event` matcht `view_item_list\|select_item\|view_item\|add_to_cart\|remove_from_cart\|view_cart\|begin_checkout\|add_shipping_info\|add_payment_info\|purchase` |
+| `ce - purchase`           | Custom Event               | `event == purchase`                                                                                                                                 |
+| `ce - search`             | Custom Event               | `event == search`                                                                                                                                   |
+| `ce - add_shipping_info`  | Custom Event               | `event == add_shipping_info`                                                                                                                        |
+| `ce - consent_update`     | Custom Event               | `event == consent_update`                                                                                                                           |
+| `ce - No Analytics Consent` | Custom Event (blockierend) | `consent_analytics != true` — blockiert GA4-Tags                                                                                                  |
+| `ce - No Marketing Consent` | Custom Event (blockierend) | `consent_marketing != true` — blockiert GAds-Tags                                                                                                 |
+| `ce - No Functional Consent` | Custom Event (blockierend) | `consent_preferences != true`                                                                                                                     |
+
+Es gibt **keinen** separaten "All Pages"- oder "Consent Initialization"-Trigger als Objekt im
+Export — GA4/GAds Config-Tags feuern auf GTMs implizitem Built-in-"All Pages"-Trigger (kein
+`firingTriggerId` gesetzt), und es gibt keinen GTM-seitigen Consent-Init-Tag (siehe "Tags" oben).
 
 ### Consent Mode v2
 
-Der GTM Container setzt Consent Mode Default-Werte bei Initialisierung:
+**Nicht der GTM Container** setzt die Consent-Mode-Defaults — das macht das **Pixel selbst**,
+per `gtag("consent", "default", ...)`, noch bevor GTM überhaupt lädt (ältere Version dieser Doku
+war hier falsch, inkl. eines nicht existierenden `wait_for_update`-Felds):
 
 ```js
 gtag("consent", "default", {
@@ -197,21 +236,32 @@ gtag("consent", "default", {
   analytics_storage: "denied",
   ad_user_data: "denied",
   ad_personalization: "denied",
-  wait_for_update: 500,
 });
 ```
 
-Das Custom Pixel sendet Consent-Updates via dataLayer:
+`gtag()` ist im Pixel ein simpler Wrapper (`window.dataLayer.push(arguments)`) — dieser Push läuft
+über den **direkten Pfad**, nicht über `pushEvent()`/`pendingEvents[]` (siehe Warnung oben unter
+"GTM Loading").
+
+Bei Consent-Erteilung pusht das Pixel **zwei separate** dataLayer-Einträge — einmal das
+`gtag("consent","update", ...)` mit den GTM-Consent-Signalen, einmal ein eigenes
+`consent_update`-Custom-Event mit den rohen Shopify-Consent-Flags (booleans, keine
+"granted"/"denied"-Strings — ältere Version dieser Doku hatte hier ein erfundenes,
+zusammengefasstes `consent`-Objekt):
 
 ```js
+gtag("consent", "update", {
+  analytics_storage: userConsent.analytics ? "granted" : "denied",
+  ad_storage: userConsent.marketing ? "granted" : "denied",
+  ad_user_data: userConsent.marketing ? "granted" : "denied",
+  ad_personalization: userConsent.marketing ? "granted" : "denied",
+});
+
 window.dataLayer.push({
   event: "consent_update",
-  consent: {
-    ad_storage: "granted", // wenn marketing consent
-    analytics_storage: "granted", // wenn analytics consent
-    ad_user_data: "granted",
-    ad_personalization: "granted",
-  },
+  consent_preferences: userConsent.preferences,
+  consent_analytics: userConsent.analytics,
+  consent_marketing: userConsent.marketing,
 });
 ```
 
@@ -221,23 +271,29 @@ window.dataLayer.push({
 
 ### Shopify Customer Privacy API
 
+Es wird nur **ein** Event abonniert — `visitorConsentUpdated` wird im Pixel nicht genutzt, und es
+gibt keinen separaten `updateConsent()`-Helper (ältere Version dieser Doku war hier falsch, die
+Logik liegt inline im Callback):
+
 ```js
 // Im init-Event verfügbar:
-api.customerPrivacy.subscribe('visitorConsentCollected', (consent) => {
-  // consent.analyticsProcessingAllowed
-  // consent.marketingAllowed
-  // consent.saleOfDataAllowed (US)
-  updateConsent(consent);
+api.customerPrivacy?.subscribe?.("visitorConsentCollected", (event) => {
+  userConsent = {
+    preferences: event?.customerPrivacy?.preferencesProcessingAllowed,
+    analytics: event?.customerPrivacy?.analyticsProcessingAllowed,
+    marketing: event?.customerPrivacy?.marketingAllowed,
+  };
+  // → gtag("consent", "update", {...}) + dataLayer.push({ event: "consent_update", ... })
 });
-api.customerPrivacy.subscribe('visitorConsentUpdated', (consent) => { ... });
 ```
 
 ### Consent-Kategorien → GTM Consent Mode Mapping
 
-| Shopify Consent              | GTM Consent Signal                                 |
-| ---------------------------- | -------------------------------------------------- |
-| `analyticsProcessingAllowed` | `analytics_storage`                                |
-| `marketingAllowed`           | `ad_storage`, `ad_user_data`, `ad_personalization` |
+| Shopify Consent                | GTM Consent Signal                                 |
+| -------------------------------- | -------------------------------------------------- |
+| `analyticsProcessingAllowed`   | `analytics_storage`                                |
+| `marketingAllowed`             | `ad_storage`, `ad_user_data`, `ad_personalization` |
+| `preferencesProcessingAllowed` | als `consent_preferences` getrackt, gated aktuell aber keinen GTM-Tag (Trigger `ce - No Functional Consent` existiert, ist aber unbenutzt) |
 
 ### Checkout-Events ohne Consent
 
@@ -256,20 +312,23 @@ Filesystem-Zugriff. Sicherheitsfokus liegt auf:
 
 ### Ecommerce-Validierung
 
-Vor jedem dataLayer-Push wird geprüft:
-
-- `items[]` Array vorhanden und nicht leer
-- `currency` vorhanden
-- `value` ist eine Zahl
-- Bei `purchase`: `transaction_id` vorhanden
+Vor jedem dataLayer-Push prüft `validateEvent(eventName, params)` die pro Event definierten
+Pflichtfelder aus `EVENT_REQUIRED_PARAMS` gegen die **flachen** Top-Level-Keys von `params`
+(nicht gegen ein verschachteltes `eventData.ecommerce.*` — ältere Version dieser Doku hatte hier
+eine fiktive `isValidEcommerceEvent()`-Funktion mit falscher Struktur). Bei `purchase` ist u. a.
+`transaction_id` Pflicht. Bei einem Fehler wird kein Event gepusht, sondern stattdessen ein
+`datalayer_error`-Event mit den Validierungsfehlern:
 
 ```js
-function isValidEcommerceEvent(eventData) {
-  if (!eventData.ecommerce || !Array.isArray(eventData.ecommerce.items))
-    return false;
-  if (!eventData.ecommerce.currency) return false;
-  // ...
-  return true;
+function validateEvent(eventName, params) {
+  const requiredParams = EVENT_REQUIRED_PARAMS[eventName]; // z. B. purchase: ["currency","value","transaction_id","items"]
+  for (const param of requiredParams) {
+    if (!(param in params) || params[param] == null) {
+      // fehlt → Fehler sammeln
+    }
+    // optional: PARAM_VALUE_FORMAT[param] prüft das Format (z. B. currency = /^[A-Z]{3}$/)
+  }
+  // bei Fehlern: pushError(eventName, ...) statt des eigentlichen Events
 }
 ```
 
@@ -281,8 +340,9 @@ Klartextwerte werden nicht geloggt. Hashing passiert async vor dem dataLayer-Pus
 ### Keine externen Dependencies
 
 Der Pixel-Code darf keine `import`/`require` Statements enthalten und keine
-externen URLs laden außer GTM und `crypto` (falls verfügbar). SHA-256 muss
-inline implementiert sein.
+externen URLs laden außer GTM. SHA-256 läuft über die native `crypto.subtle.digest("SHA-256", ...)`
+Web-Crypto-API — **keine** eigene Inline-Implementierung (ältere Version dieser Doku forderte hier
+fälschlich eine Inline-Implementierung; siehe auch "Bekannte Limitierungen" unten).
 
 ---
 
@@ -293,7 +353,7 @@ inline implementiert sein.
 Single-company license. Redistribution prohibited.
 ```
 
-- Version im Kommentar-Header des JS: `// v1.0.0`
+- Version im JSDoc-Kommentar-Header des JS: `* Version 1.0.0` (kein `v`-Präfix, kein `//`)
 - Semantic Versioning: MAJOR.MINOR.PATCH
   - MAJOR: Breaking Changes (neue Shopify API, inkompatible GTM-Änderungen)
   - MINOR: Neue Features (neue Events, neue Consent-Signale)
@@ -314,6 +374,9 @@ Single-company license. Redistribution prohibited.
 - **Google Ads User Data Tag pausiert**: Das "Google Ads User Data" (Enhanced Conversions) Tag ist seit 2026-07-13
   in GTM pausiert. `/test-purchase-flow`-Läufe prüfen den `ccm/s/collect`-Request-Body deshalb nicht mehr —
   erst wieder aktivieren, wenn der Tag reaktiviert wird.
+- ~~`shipping_tier` leer~~ **behoben** (Commit `e660c61`, 2026-07-12): `checkout.delivery.selectedDeliveryOptions[0].type`
+  lieferte oft `undefined`; Fallback auf `.title` ergänzt. `/test-purchase-flow`-Lauf vom 2026-07-25 bestätigt
+  `ep.shipping_tier=Standard` im `add_shipping_info`-Request — kein bekannter Gap mehr.
 
 ---
 
