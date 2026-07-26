@@ -45,14 +45,18 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   // logged to console in live environment:
   enableLogsInProd: false,
 
-  // select shopify user data to be
-  // pushed in hashed format.
+  // state if user id / login id should be tracked
+  // with GA4 - only allow if legally checked:
+  trackShopifyUserId: false,
+
+  // select shopify user data to be pushed in
+  // hashed format - only add if legally checked:
   // Available user data:
   // "firstName", "lastName", "email", "phone"
   pushHashedUserData: ["firstName", "lastName", "email", "phone"],
 
-  // select shopify user data to be
-  // pushed in clear format.
+  // select shopify user data to be pushed in
+  // clear format - only add if legally checked:
   // Available user data:
   // "firstName", "lastName", "email", "phone", "street", "city", "region", "zip", "country"
   pushClearUserData: ["street", "city", "region", "zip", "country"],
@@ -194,7 +198,7 @@ analytics?.subscribe?.("page_viewed", async (event) => {
   };
 
   const userDataObject = getUserData();
-  userDataObject.id = userData.userId;
+  userDataObject.id = config.trackShopifyUserId ? userData.userId : null;
   userDataObject.orders_count = userData.userOrdersCount;
 
   if (validateEvent("page_view", { event: ga4EventName, ...pageViewObject })) {
