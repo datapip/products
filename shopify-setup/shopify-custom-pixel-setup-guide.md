@@ -62,9 +62,9 @@ Save each variable after editing.
    | `enableLogsInDev` / `enableLogsInProd` | Set to `true` to log every dataLayer push to the browser console — useful while testing, recommended `false` in `enableLogsInProd` once live. |
    | `pushHashedUserData` | Which customer fields to push as SHA-256 hashes (for Enhanced Conversions / GA4 user data): any of `"firstName"`, `"lastName"`, `"email"`, `"phone"`. |
    | `pushClearUserData` | Which fields to push in clear text (never email/phone/name): any of `"street"`, `"city"`, `"region"`, `"zip"`, `"country"`. |
-   | `trackShopifyUserId` | Set to `true` to send the visitor's Shopify customer ID to GA4 as the `user_id` parameter, enabling GA4's User-ID feature (cross-device/cross-session reporting for logged-in customers). Ships `false`. |
+   | `trackUserId` | Set to `true` to send the visitor's Shopify customer ID to GA4 as the `user_id` parameter, enabling GA4's User-ID feature (cross-device/cross-session reporting for logged-in customers). Ships `false`. |
 
-> 💡 **Optional — GA4 User-ID (cross-device tracking):** `trackShopifyUserId` is `false` by default, so no customer ID is sent and GA4's User-ID feature stays off. Enabling it lets GA4 stitch a logged-in customer's sessions together across devices — that's a distinct form of processing from ordinary analytics, so only turn it on once you've confirmed your consent/legal basis actually covers cross-device tracking.
+> 💡 **Optional — GA4 User-ID (cross-device tracking):** `trackUserId` is `false` by default, so no customer ID is sent and GA4's User-ID feature stays off. Enabling it lets GA4 stitch a logged-in customer's sessions together across devices — that's a distinct form of processing from ordinary analytics, so only turn it on once you've confirmed your consent/legal basis actually covers cross-device tracking.
 
 6. Click **Save**, then set the pixel's status to **Connected**.
 7. **Grant data access:** because this pixel reads checkout and customer data (email, phone, billing address) to power Enhanced Conversions, Shopify will prompt you to grant additional permissions the first time you save it. Under the pixel's **Permissions** tab, approve access to customer and checkout data — without this, the checkout-related fields will arrive as empty/`null`.

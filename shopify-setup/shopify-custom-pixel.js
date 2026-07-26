@@ -47,7 +47,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 
   // state if user id / login id should be tracked
   // with GA4 - only allow if legally checked:
-  trackShopifyUserId: false,
+  trackUserId: false,
 
   // select shopify user data to be pushed in
   // hashed format - only add if legally checked:
@@ -198,7 +198,7 @@ analytics?.subscribe?.("page_viewed", async (event) => {
   };
 
   const userDataObject = getUserData();
-  userDataObject.id = config.trackShopifyUserId ? userData.userId : null;
+  userDataObject.id = config.trackUserId ? userData.userId : null;
   userDataObject.orders_count = userData.userOrdersCount;
 
   if (validateEvent("page_view", { event: ga4EventName, ...pageViewObject })) {
