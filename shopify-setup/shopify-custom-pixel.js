@@ -80,7 +80,7 @@ let userData = {
   lastNameHash: null,
   email: (init?.data?.customer?.email || "").trim().toLowerCase() || null,
   emailHash: null,
-  phone: (init?.data?.customer?.phone || "").trim() || null,
+  phone: (init?.data?.customer?.phone || "").trim().toLowerCase() || null,
   phoneHash: null,
   street: null,
   city: null,
@@ -806,12 +806,11 @@ const PARAM_VALUE_FORMAT = {
   items: (input) => {
     return (
       input.length > 0 &&
-      input.length ===
-        input.filter(
-          (item) =>
-            typeof item.item_id === "string" &&
-            typeof item.item_name === "string",
-        ).length
+      input.every(
+        (item) =>
+          typeof item.item_id === "string" &&
+          typeof item.item_name === "string",
+      )
     );
   },
   search_term: (input) => {
@@ -901,7 +900,7 @@ function initializeGTM() {
   scriptElement.text = gtmSnippet;
   document.head.appendChild(scriptElement);
 
-  console.log("[debug] GTM snippet injeceted");
+  console.log("[debug] GTM snippet injected");
 
   gtmLoaded = true;
 
