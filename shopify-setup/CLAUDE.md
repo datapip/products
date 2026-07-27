@@ -27,8 +27,12 @@ https://datapip.gumroad.com
 | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | `shopify-custom-pixel.js`               | Das Custom Pixel — wird als Custom Pixel in Shopify Customer Events eingefügt. Einzige Datei, die der Käufer im Shopify Admin bearbeitet. |
 | `gtm-container.json`                    | Exportierter GTM Web Container mit allen GA4- und Google Ads-Tags. Käufer importiert in sein GTM-Konto.                                   |
+| `shopify-custom-pixel-setup-guide.md`   | Plain-Markdown-Quelle der Setup-Anleitung — inhaltliche Änderungen hier zuerst machen, dann manuell in die `.docx` übertragen (siehe Hinweis unten). |
+| `shopify-custom-pixel-setup-guide.docx` | Editierbare Word-Quelldatei der Setup-Anleitung (Basis für den PDF-Export). Muss inhaltlich synchron zur `.md` gehalten werden. |
 | `shopify-custom-pixel-setup-guide.pdf`  | Setup-Anleitung für Käufer (aus `.docx` generiert)                                                                                        |
-| `shopify-custom-pixel-setup-guide.docx` | Editierbare Quelldatei der Setup-Anleitung                                                                                                |
+| `gumroad-product-texts.md`              | Copy für Gumroad-Produktseite und Content-Page nach Kauf. Muss inhaltlich synchron zur Setup-Anleitung gehalten werden (Steps, Legal/Disclaimer-Abschnitte). |
+
+**Hinweis zur `.docx`-Pflege:** In dieser Dev-Umgebung stand kein `python-docx`/`pandoc`/LibreOffice zur Verfügung, um die `.docx` programmatisch zu bearbeiten. Änderungen wurden stattdessen direkt im `word/document.xml` innerhalb des `.docx`-Zip-Archivs vorgenommen (Archiv entpacken, XML gezielt patchen, Wohlgeformtheit prüfen, Ordner wieder zu `.zip` packen und in `.docx` umbenennen). Nach jeder inhaltlichen Änderung an der `.md` muss dieser Schritt wiederholt werden, um `.docx` synchron zu halten — der PDF-Export selbst läuft weiterhin außerhalb dieser Umgebung (z. B. über Word).
 
 **Referenz-Implementierung (nicht Teil des Produkts):**
 `d:\Development\projects\digital synergies\shopify\shopify-custom-pixel-gtm.js` —
@@ -373,10 +377,30 @@ Single-company license. Redistribution prohibited.
 - **SHA-256**: `crypto.subtle` ist verfügbar und wird direkt genutzt — keine Inline-Implementierung nötig
 - **Google Ads User Data Tag pausiert**: Das "Google Ads User Data" (Enhanced Conversions) Tag ist seit 2026-07-13
   in GTM pausiert. `/test-purchase-flow`-Läufe prüfen den `ccm/s/collect`-Request-Body deshalb nicht mehr —
-  erst wieder aktivieren, wenn der Tag reaktiviert wird.
+  erst wieder aktivieren, wenn der Tag reaktiviert wird. `/test-purchase-flow`-Lauf vom 2026-07-27 bestätigt:
+  ein `ccm/s/collect`-Request feuert weiterhin (Google-Hintergrund-Ping, unabhängig vom Tag), aber mit **leerem
+  Body** — kein PII-Payload, Tag bleibt effektiv inaktiv.
 - ~~`shipping_tier` leer~~ **behoben** (Commit `e660c61`, 2026-07-12): `checkout.delivery.selectedDeliveryOptions[0].type`
-  lieferte oft `undefined`; Fallback auf `.title` ergänzt. `/test-purchase-flow`-Lauf vom 2026-07-25 bestätigt
-  `ep.shipping_tier=Standard` im `add_shipping_info`-Request — kein bekannter Gap mehr.
+  lieferte oft `undefined`; Fallback auf `.title` ergänzt. `/test-purchase-flow`-Läufe vom 2026-07-25 und 2026-07-27
+  bestätigen `ep.shipping_tier=Standard` im `add_shipping_info`-Request — kein bekannter Gap mehr.
+- **`payment_type` leer**: `ep.payment_type` kommt im `add_payment_info`-Event trotz eingetragener Testkarte
+  konsequent leer zurück (`checkout.transactions[0].paymentMethod` liefert offenbar keinen nutzbaren Namen/Typ
+  in der Sandbox). Bestätigt in `/test-purchase-flow`-Läufen vom 2026-07-25 und 2026-07-27 — weiterhin ungelöst,
+  im Gegensatz zum `shipping_tier`-Gap oben. `add_payment_info` und `purchase` landen dabei oft gebatcht in einem
+  einzigen `region1.google-analytics.com/g/collect`-POST (GA4-Verhalten) — die URL selbst trägt dann kein `en=`,
+  die Event-Daten liegen stattdessen zeilenweise im Request-Body.
+- **Shopify-Pixel-Editor zeigt fälschlich "Pixel will not track any customer behavior because it is not
+  subscribed to any events."**: Shopify erkennt Subscriptions im Pixel-Editor per simplem Text-Scan nach dem
+  Literal `analytics.subscribe(` im Quellcode. Da dieses Pixel durchgehend `analytics?.subscribe?.(...)`
+  (Optional Chaining) nutzt, matcht dieser Scan nie — der Pixel funktioniert davon unberührt (verifiziert per
+  `/test-purchase-flow`), die Warnung ist ein reiner UI-Fehlalarm. Seit 2026-07-27 auch im
+  Setup Guide (Step 3) als Hinweis für Käufer dokumentiert, damit sie deswegen keinen Support-Ticket öffnen.
+- **Step 6 (Legal/GDPR Review) + "No Compliance Guarantee"-Disclaimer**: Setup Guide (`.md`/`.docx`) und
+  `gumroad-product-texts.md` enthalten seit 2026-07-27 einen zusätzlichen Schritt, der Käufer
+  anweist, `trackUserId: true` und das Unpausen des GAds-User-Data-Tags vorher mit ihrem Datenschutzbeauftragten
+  abzuklären, sowie einen Disclaimer, dass das Template keine GDPR-Compliance garantiert. Bei künftigen
+  Content-Änderungen an einer der drei Stellen (Setup Guide `.md`, `.docx`, Gumroad-Texte) müssen die anderen
+  beiden mitgepflegt werden.
 
 ---
 

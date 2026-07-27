@@ -69,6 +69,8 @@ Save each variable after editing.
 6. Click **Save**, then set the pixel's status to **Connected**.
 7. **Grant data access:** because this pixel reads checkout and customer data (email, phone, billing address) to power Enhanced Conversions, Shopify will prompt you to grant additional permissions the first time you save it. Under the pixel's **Permissions** tab, approve access to customer and checkout data — without this, the checkout-related fields will arrive as empty/`null`.
 
+> 💡 **You can ignore the "not subscribed to any events" warning:** Shopify's pixel editor may show *"Pixel will not track any customer behavior because it is not subscribed to any events."* This is a false positive, not a bug. Shopify detects subscriptions by scanning the raw source for the literal text `analytics.subscribe(` — but this template calls `analytics?.subscribe?.(...)` (optional chaining, so the pixel never throws if the API isn't ready yet), which that scan doesn't recognize. The pixel is still fully subscribed and events fire correctly regardless of this warning; confirm it yourself using GTM's Preview mode in Step 5.
+
 ---
 
 ## Step 4 — Consent (GDPR)
@@ -101,6 +103,17 @@ Shopify still fires its underlying `checkout_completed` pixel event regardless o
 
 ---
 
+## Step 6 — Legal / GDPR Review (before going live)
+
+Before publishing, check the following with your **data protection officer / GDPR officer / legal counsel** — these are legal determinations for your specific business, not technical defaults this template can decide for you:
+
+1. **`trackUserId`** ([Step 3](#step-3--add-the-custom-pixel-to-shopify)): whether you're allowed to set this to `true` in `shopify-custom-pixel.js` to send the visitor's Shopify customer ID to GA4, enabling cross-device tracking of logged-in customers.
+2. **Sending user data to Google Ads**: whether you're allowed to send customer data (hashed and/or clear-text, per `pushHashedUserData` / `pushClearUserData`) to Google Ads for Enhanced Conversions. Only if yes, unpause the tag **`GAds - Event - User Data (unpause, if allowed)`** in your GTM container — it ships paused by default.
+
+Both settings default to off/paused for this reason. Leave them off unless your GDPR officer has explicitly confirmed your consent setup and legal basis cover them.
+
+---
+
 ## License, Warranty & Liability Disclaimer
 
 **Notice:** Unofficial, independent integration. Not affiliated with or endorsed by Shopify Inc., Google LLC, Google Analytics, Google Ads, or Google Tag Manager. All product and company names are trademarks™ or registered® trademarks of their respective owners.
@@ -110,3 +123,5 @@ Shopify still fires its underlying `checkout_completed` pixel event regardless o
 **B2B Only:** This product is intended exclusively for commercial entities (B2B). By purchasing, you confirm that you are acting as a business, freelancer, or legal entity.
 
 **Warranty & Liability:** Sold strictly "as-is" without guaranteed future API updates. Implementation and use are entirely at your own risk. The author assumes no liability for data loss, tracking disruptions, misconfigured consent settings, or financial damages.
+
+**No Compliance Guarantee:** This template is a technical starting point, not a guarantee of legal compliance. The initial setup as shipped is not guaranteed to be fully GDPR-compliant for your specific business. You are solely responsible for reviewing the final configuration — consent setup, `trackUserId`, data sent to Google Ads, and all other settings — with your own data protection officer or legal counsel before going live.

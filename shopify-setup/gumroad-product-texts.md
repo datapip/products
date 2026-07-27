@@ -44,6 +44,8 @@ This is a **one-time purchase** of the current development state ("as is"). You 
 
 **Warranty & Liability:** Sold strictly "as-is" without guaranteed future API updates. Implementation and use are entirely at your own risk. The author assumes no liability for data loss, tracking disruptions, misconfigured consent settings, or financial damages.
 
+**No Compliance Guarantee:** This template is a technical starting point, not a guarantee of legal compliance. The initial setup as shipped is not guaranteed to be fully GDPR-compliant for your specific business — you must review the final configuration with your own data protection officer or legal counsel before going live.
+
 ---
 
 ## CONTENT PAGE
@@ -84,6 +86,10 @@ Make sure Shopify's native **Customer Privacy** settings (or a compatible CMP) a
 
 Use GTM's **Preview** mode together with a live test checkout to confirm every event (`page_view`, `view_item`, `add_to_cart`, `begin_checkout`, `purchase`, etc.) fires with the correct data before publishing your workspace.
 
+#### Step 6 — Legal / GDPR Review
+
+Before going live, check with your data protection officer / legal counsel whether you're allowed to (a) set `trackUserId: true` for cross-device GA4 tracking of logged-in customers, and (b) send customer data to Google Ads for Enhanced Conversions — only then unpause the `GAds - Event - User Data (unpause, if allowed)` tag in GTM. Both ship off/paused by default.
+
 _(Full details, screenshots, and troubleshooting notes are in the attached PDF Setup Guide.)_
 
 ### License, Support & Conditions
@@ -95,3 +101,5 @@ _(Full details, screenshots, and troubleshooting notes are in the attached PDF S
 **B2B Only:** This product is intended exclusively for commercial entities (B2B). By purchasing, you confirm that you are acting as a business, freelancer, or legal entity.
 
 **Warranty & Liability:** Sold strictly "as-is" without guaranteed future API updates. Implementation and use are entirely at your own risk. The author assumes no liability for data loss, tracking disruptions, misconfigured consent settings, or financial damages.
+
+**No Compliance Guarantee:** This template is a technical starting point, not a guarantee of legal compliance. The initial setup as shipped is not guaranteed to be fully GDPR-compliant for your specific business — you must review the final configuration with your own data protection officer or legal counsel before going live.

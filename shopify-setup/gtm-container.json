@@ -885,7 +885,7 @@
                   {
                     "type": "TEMPLATE",
                     "key": "value",
-                    "value": "AW-1011121314"
+                    "value": "AW-YYYYYYYYY"
                   }
                 ]
               },
@@ -900,7 +900,7 @@
                   {
                     "type": "TEMPLATE",
                     "key": "value",
-                    "value": "AW-123456789"
+                    "value": "AW-XXXXXXXXX"
                   }
                 ]
               }
@@ -1248,17 +1248,12 @@
           {
             "type": "BOOLEAN",
             "key": "setDefaultValue",
-            "value": "true"
+            "value": "false"
           },
           {
             "type": "TEMPLATE",
             "key": "input",
             "value": "{{dlv - environment}}"
-          },
-          {
-            "type": "TEMPLATE",
-            "key": "defaultValue",
-            "value": "G-ABCDE12345"
           },
           {
             "type": "LIST",
@@ -1275,7 +1270,7 @@
                   {
                     "type": "TEMPLATE",
                     "key": "value",
-                    "value": "G-ABCDE67890"
+                    "value": "G-YYYYYYYYYY"
                   }
                 ]
               },
@@ -1290,7 +1285,7 @@
                   {
                     "type": "TEMPLATE",
                     "key": "value",
-                    "value": "G-ABCDE12345"
+                    "value": "G-XXXXXXXXXX"
                   }
                 ]
               }
